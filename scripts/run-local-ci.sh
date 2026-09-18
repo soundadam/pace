@@ -2,9 +2,35 @@
 set -eu
 
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-GO_VERSION="1.25.8"
+
+# go.mod is the single source of truth for the Go version. Everything else that
+# names a Go version (this script's pinned archive, components/librespeed-cli)
+# is checked against it rather than maintained independently.
+GO_VERSION=$(awk '$1 == "go" { print $2; exit }' "$ROOT/go.mod")
+if [ -z "$GO_VERSION" ]; then
+  echo "run-local-ci: could not read the go directive from $ROOT/go.mod" >&2
+  exit 1
+fi
+
+# The toolchain archive is fetched over the network, so its checksum must be
+# pinned rather than derived. Pin the version it belongs to alongside it: if
+# go.mod moves and this is not updated in lockstep, fail loudly instead of
+# verifying a new archive against a stale digest.
+GO_ARCHIVE_PINNED_VERSION="1.26.8"
+GO_ARCHIVE_SHA256="d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b"
+if [ "$GO_VERSION" != "$GO_ARCHIVE_PINNED_VERSION" ]; then
+  echo "run-local-ci: go.mod pins Go $GO_VERSION but the archive checksum in this script is for $GO_ARCHIVE_PINNED_VERSION." >&2
+  echo "run-local-ci: update GO_ARCHIVE_PINNED_VERSION and GO_ARCHIVE_SHA256 from https://go.dev/dl/ to match go.mod." >&2
+  exit 1
+fi
+
+COMPONENT_GO_VERSION=$(awk '$1 == "go" { print $2; exit }' "$ROOT/components/librespeed-cli/go.mod")
+if [ "$COMPONENT_GO_VERSION" != "$GO_VERSION" ]; then
+  echo "run-local-ci: components/librespeed-cli/go.mod pins Go $COMPONENT_GO_VERSION but go.mod pins $GO_VERSION." >&2
+  exit 1
+fi
+
 GO_ARCHIVE="go${GO_VERSION}.linux-amd64.tar.gz"
-GO_ARCHIVE_SHA256="ceb5e041bbc3893846bd1614d76cb4681c91dadee579426cf21a63f2d7e03be6"
 GO_ARCHIVE_URL="https://go.dev/dl/${GO_ARCHIVE}"
 
 checksum() {
