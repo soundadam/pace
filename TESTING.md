@@ -132,8 +132,11 @@ Run the selector:
 
 Check:
 
-- a fresh preferences path opens Chinese/English setup and saves mode `0600`;
-- `soundprobe setup` can change language and daily stations;
+- a fresh preferences path opens the daily-station setup and saves mode `0600`;
+- `soundprobe setup` can change daily stations;
+- a `preferences.json` from an older schema (e.g. `"schemaVersion": 1`) re-opens
+  setup on the next run and is overwritten, rather than failing with
+  `preferences_error` and exit 1;
 - later bare runs show only the configured daily stations;
 - the selector clears before progress begins;
 - NJU Campus plus M-Lab and Apple are recommended; Ookla is never auto-selected;

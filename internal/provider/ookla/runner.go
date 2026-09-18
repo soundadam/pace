@@ -1,7 +1,6 @@
 package ookla
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -58,13 +57,12 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 	request.Report(provider.ProgressEvent{Provider: model.ProviderOokla, Phase: provider.ProgressMeasuring})
 
 	command := exec.CommandContext(measurementCtx, path, args...)
-	var stdout, stderr cappedBuffer
-	stdout.Limit = 4 * 1024 * 1024
-	stderr.Limit = 32 * 1024
-	command.Stdout = &stdout
-	command.Stderr = &stderr
+	stdout := provider.NewCappedBuffer(4 * 1024 * 1024)
+	stderr := provider.NewCappedBuffer(32 * 1024)
+	command.Stdout = stdout
+	command.Stderr = stderr
 	if err := command.Run(); err != nil {
-		durationMS := elapsedMS(startedAt, runner.Now())
+		durationMS := provider.ElapsedMS(startedAt, runner.Now())
 		if errors.Is(measurementCtx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
 			return cancelledMeasurement(version, durationMS), nil
 		}
@@ -76,9 +74,9 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 				return measurement, nil
 			}
 		}
-		message := compact(stderr.String())
+		message := provider.SanitizeMessage(stderr.String(), provider.MessageLimit)
 		if message == "" {
-			message = compact(stdout.String())
+			message = provider.SanitizeMessage(stdout.String(), provider.MessageLimit)
 		}
 		if message == "" {
 			message = "Ookla Speedtest exited without a result"
@@ -91,12 +89,15 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 		return failedMeasurement(version, durationMS, model.FailureStageHelper, code, message), nil
 	}
 
-	durationMS := elapsedMS(startedAt, runner.Now())
+	durationMS := provider.ElapsedMS(startedAt, runner.Now())
 	measurement, parseErr := parseResult(stdout.Bytes(), version, durationMS)
 	if parseErr != nil {
 		message := parseErr.Error()
-		if stderr.String() != "" {
-			message = compact(stderr.String())
+		// Check the sanitized text, not the raw buffer: stderr holding only
+		// whitespace would otherwise replace the parse error with an empty
+		// message, which model.Validate rejects.
+		if sanitized := provider.SanitizeMessage(stderr.String(), provider.MessageLimit); sanitized != "" {
+			message = sanitized
 		}
 		return failedMeasurement(version, durationMS, model.FailureStageHelper, "invalid_output", message), nil
 	}
@@ -179,7 +180,7 @@ func (runner *Runner) validate(ctx context.Context, path string) (string, error)
 		if text == "" {
 			text = "no usable version output"
 		}
-		return "", fmt.Errorf("%w: %s is not the official Ookla Speedtest CLI (version output: %q)", provider.ErrUnavailable, path, compact(text))
+		return "", fmt.Errorf("%w: %s is not the official Ookla Speedtest CLI (version output: %q)", provider.ErrUnavailable, path, provider.SanitizeMessage(text, provider.MessageLimit))
 	}
 	version := "unknown"
 	if match := versionPattern.FindString(text); match != "" {
@@ -236,31 +237,4 @@ func (runner *Runner) setDefaults() {
 	if runner.Now == nil {
 		runner.Now = time.Now
 	}
-}
-
-func elapsedMS(start, end time.Time) int64 {
-	duration := end.Sub(start).Milliseconds()
-	if duration < 0 {
-		return 0
-	}
-	return duration
-}
-
-type cappedBuffer struct {
-	bytes.Buffer
-	Limit int
-}
-
-func (buffer *cappedBuffer) Write(data []byte) (int, error) {
-	if buffer.Limit > 0 {
-		remaining := buffer.Limit - buffer.Len()
-		if remaining > 0 {
-			if len(data) > remaining {
-				_, _ = buffer.Buffer.Write(data[:remaining])
-			} else {
-				_, _ = buffer.Buffer.Write(data)
-			}
-		}
-	}
-	return len(data), nil
 }

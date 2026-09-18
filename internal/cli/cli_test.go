@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -455,10 +456,10 @@ func TestBareTTYRunsOnboardingOnceAndUsesDailyStations(t *testing.T) {
 	setupCalls := 0
 	app.SetupFactory = func(context.Context, io.Reader, io.Writer, string, preferences.Config) (preferences.Config, error) {
 		setupCalls++
-		return preferences.Config{SchemaVersion: preferences.SchemaVersion, Language: preferences.LanguageChinese, DailyStations: []string{"tongji"}}, nil
+		return preferences.Config{SchemaVersion: preferences.SchemaVersion, DailyStations: []string{"tongji"}}, nil
 	}
 	app.ConfiguredSelectorFactory = func(_ context.Context, _ io.Reader, _ io.Writer, _ string, config preferences.Config) (target.Plan, error) {
-		if config.Language != preferences.LanguageChinese || fmt.Sprint(config.DailyStations) != "[tongji]" {
+		if fmt.Sprint(config.DailyStations) != "[tongji]" {
 			t.Fatalf("config = %#v", config)
 		}
 		return target.Plan{StationIDs: []string{"tongji"}, Family: target.FamilyIPv4, Providers: providers}, nil
@@ -473,6 +474,49 @@ func TestBareTTYRunsOnboardingOnceAndUsesDailyStations(t *testing.T) {
 	}
 	if setupCalls != 1 {
 		t.Fatalf("setup calls = %d, want 1", setupCalls)
+	}
+}
+
+// A preferences.json written by an older schema must not hard-fail startup:
+// it is treated as "not configured yet" so setup runs and overwrites it.
+func TestBareTTYRerunsSetupOverLegacySchemaPreferences(t *testing.T) {
+	providers := []model.Provider{model.ProviderTongjiIPv4}
+	runner := &fakeRunner{summary: summaryForProviders(model.CommandRun, providers)}
+	app, _, stderr := newTestApp(t, runner)
+	app.StdoutTTY = true
+	path := filepath.Join(t.TempDir(), "preferences.json")
+	legacy := []byte(`{"schemaVersion":1,"language":"zh-CN","dailyStations":["tongji"]}`)
+	if err := os.WriteFile(path, legacy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app.Preferences = preferences.New(path)
+	setupCalls := 0
+	app.SetupFactory = func(context.Context, io.Reader, io.Writer, string, preferences.Config) (preferences.Config, error) {
+		setupCalls++
+		return preferences.Config{SchemaVersion: preferences.SchemaVersion, DailyStations: []string{"tongji"}}, nil
+	}
+	app.ConfiguredSelectorFactory = func(context.Context, io.Reader, io.Writer, string, preferences.Config) (target.Plan, error) {
+		return target.Plan{StationIDs: []string{"tongji"}, Family: target.FamilyIPv4, Providers: providers}, nil
+	}
+	app.ProgressFactory = func(io.Writer, string, []model.Provider) (progressRenderer, error) {
+		return &fakeProgressRenderer{}, nil
+	}
+	if exitCode := app.Execute(context.Background(), nil); exitCode != 0 {
+		t.Fatalf("legacy preferences failed startup: exit code = %d, stderr = %q", exitCode, stderr.String())
+	}
+	if setupCalls != 1 {
+		t.Fatalf("setup calls = %d, want 1", setupCalls)
+	}
+	// Setup overwrote the legacy file, so the next run loads it directly.
+	if exitCode := app.Execute(context.Background(), nil); exitCode != 0 {
+		t.Fatalf("second run exit code = %d, stderr = %q", exitCode, stderr.String())
+	}
+	if setupCalls != 1 {
+		t.Fatalf("setup calls after rewrite = %d, want 1", setupCalls)
+	}
+	config, exists, err := app.Preferences.Load()
+	if err != nil || !exists || config.SchemaVersion != preferences.SchemaVersion {
+		t.Fatalf("Load() = %#v, %t, %v", config, exists, err)
 	}
 }
 

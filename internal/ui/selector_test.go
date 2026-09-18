@@ -43,12 +43,12 @@ func TestSelectorDoesNotRecommendUnsupportedEdge(t *testing.T) {
 func TestConfiguredSelectorShowsOnlyDailyStationsInPriorityOrder(t *testing.T) {
 	selector := newSelectorModelConfigured("test", []target.ProbeResult{
 		{StationID: "tongji", Family: "ipv4", Status: target.ProbeReachable},
-	}, preferences.Config{SchemaVersion: preferences.SchemaVersion, Language: preferences.LanguageChinese, DailyStations: []string{"tongji", "qlu"}})
+	}, preferences.Config{SchemaVersion: preferences.SchemaVersion, DailyStations: []string{"tongji", "qlu"}})
 	if len(selector.stations) != 2 || selector.stations[0].ID != "tongji" || selector.stations[1].ID != "qlu" {
 		t.Fatalf("stations = %#v", selector.stations)
 	}
 	view := selector.View().Content
-	if !strings.Contains(view, "选择测速站") || !strings.Contains(view, "同济大学 · 上海") || strings.Contains(view, "M-Lab") {
+	if !strings.Contains(view, "select measurement targets") || !strings.Contains(view, "Tongji University · Shanghai") || strings.Contains(view, "M-Lab") {
 		t.Fatalf("configured view:\n%s", view)
 	}
 }

@@ -11,18 +11,17 @@ import (
 	"github.com/soundadam/soundprobe/internal/target"
 )
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
-type Language string
-
-const (
-	LanguageChinese Language = "zh-CN"
-	LanguageEnglish Language = "en"
-)
+// ErrUnusable marks a preferences file that is present but cannot be used: it
+// is malformed, or it was written by a different schema version. Callers treat
+// it as "not configured yet" and re-run setup, which overwrites the file.
+// Genuine I/O failures are reported without this sentinel so they still
+// surface as errors.
+var ErrUnusable = errors.New("preferences file is unusable")
 
 type Config struct {
 	SchemaVersion int      `json:"schemaVersion"`
-	Language      Language `json:"language"`
 	DailyStations []string `json:"dailyStations"`
 }
 
@@ -45,15 +44,12 @@ func DefaultConfig() Config {
 	if runtime.GOOS == "darwin" {
 		stations = append(stations, "apple")
 	}
-	return Config{SchemaVersion: SchemaVersion, Language: LanguageChinese, DailyStations: stations}
+	return Config{SchemaVersion: SchemaVersion, DailyStations: stations}
 }
 
 func (config Config) Validate() error {
 	if config.SchemaVersion != SchemaVersion {
 		return fmt.Errorf("unsupported preferences schema %d", config.SchemaVersion)
-	}
-	if config.Language != LanguageChinese && config.Language != LanguageEnglish {
-		return fmt.Errorf("unsupported language %q", config.Language)
 	}
 	if len(config.DailyStations) == 0 {
 		return errors.New("at least one daily station is required")
@@ -72,6 +68,10 @@ func (config Config) Validate() error {
 	return nil
 }
 
+// Load reads the stored preferences. It reports (zero, false, nil) when no
+// file exists yet, and (zero, false, err) wrapping ErrUnusable when a file
+// exists but is malformed or carries a different schema version — both mean
+// "not configured yet". Any other error is a genuine I/O failure.
 func (store *Store) Load() (Config, bool, error) {
 	if store == nil || store.Path == "" {
 		return Config{}, false, errors.New("preferences store is not configured")
@@ -85,10 +85,10 @@ func (store *Store) Load() (Config, bool, error) {
 	}
 	var config Config
 	if err := json.Unmarshal(data, &config); err != nil {
-		return Config{}, false, fmt.Errorf("decode preferences: %w", err)
+		return Config{}, false, fmt.Errorf("%w: decode preferences: %w", ErrUnusable, err)
 	}
 	if err := config.Validate(); err != nil {
-		return Config{}, false, fmt.Errorf("validate preferences: %w", err)
+		return Config{}, false, fmt.Errorf("%w: validate preferences: %w", ErrUnusable, err)
 	}
 	return config, true, nil
 }

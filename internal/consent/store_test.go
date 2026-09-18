@@ -41,7 +41,43 @@ func TestAcceptStatusAndRevoke(t *testing.T) {
 	}
 }
 
-func TestDefaultPathPreservesLegacyConsent(t *testing.T) {
+func TestDefaultPathIsAlwaysCurrentPath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(configDir, "soundprobe", "consent.json")
+
+	path, err := DefaultPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != want {
+		t.Fatalf("DefaultPath() = %q, want %q", path, want)
+	}
+
+	// A pre-rename njuprobe consent file must not influence the result.
+	legacy := filepath.Join(configDir, "njuprobe", "consent.json")
+	if err := os.MkdirAll(filepath.Dir(legacy), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacy, []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	path, err = DefaultPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != want {
+		t.Fatalf("DefaultPath() with legacy file present = %q, want %q", path, want)
+	}
+}
+
+func TestStatusWithOnlyLegacyConsentIsNotAcceptedWithoutError(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", "")
@@ -54,7 +90,8 @@ func TestDefaultPathPreservesLegacyConsent(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(legacy), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(legacy, []byte("{}\n"), 0o600); err != nil {
+	record := []byte(`{"schemaVersion":1,"provider":"mlab","policyVersion":"` + PolicyVersion + `","acceptedAt":"2026-07-21T08:00:00Z","toolVersion":"legacy"}` + "\n")
+	if err := os.WriteFile(legacy, record, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -62,7 +99,11 @@ func TestDefaultPathPreservesLegacyConsent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if path != legacy {
-		t.Fatalf("DefaultPath() = %q, want legacy %q", path, legacy)
+	_, accepted, err := New(path).Status()
+	if err != nil {
+		t.Fatalf("Status() error = %v, want nil", err)
+	}
+	if accepted {
+		t.Fatal("Status() = accepted, want re-prompt for legacy-only consent")
 	}
 }

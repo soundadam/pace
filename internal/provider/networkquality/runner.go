@@ -1,7 +1,6 @@
 package networkquality
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -69,13 +68,12 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 	request.Report(provider.ProgressEvent{Provider: model.ProviderApple, Phase: provider.ProgressMeasuring})
 
 	command := exec.CommandContext(measurementCtx, path, args...)
-	var stdout, stderr cappedBuffer
-	stdout.Limit = 2 * 1024 * 1024
-	stderr.Limit = 32 * 1024
-	command.Stdout = &stdout
-	command.Stderr = &stderr
+	stdout := provider.NewCappedBuffer(2 * 1024 * 1024)
+	stderr := provider.NewCappedBuffer(32 * 1024)
+	command.Stdout = stdout
+	command.Stderr = stderr
 	if err := command.Run(); err != nil {
-		durationMS := elapsedMS(startedAt, runner.Now())
+		durationMS := provider.ElapsedMS(startedAt, runner.Now())
 		if errors.Is(measurementCtx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
 			return cancelledMeasurement(durationMS), nil
 		}
@@ -87,19 +85,22 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 				return measurement, nil
 			}
 		}
-		message := strings.TrimSpace(stderr.String())
+		message := provider.SanitizeMessage(stderr.String(), provider.MessageLimit)
 		if message == "" {
 			message = "Apple networkQuality exited without a result"
 		}
-		return failedMeasurement(durationMS, "helper_exit", compact(message)), nil
+		return failedMeasurement(durationMS, "helper_exit", message), nil
 	}
 
-	durationMS := elapsedMS(startedAt, runner.Now())
+	durationMS := provider.ElapsedMS(startedAt, runner.Now())
 	measurement, parseErr := parseResult(stdout.Bytes(), durationMS)
 	if parseErr != nil {
 		message := parseErr.Error()
-		if stderr.String() != "" {
-			message = compact(strings.TrimSpace(stderr.String()))
+		// Check the sanitized text, not the raw buffer: stderr holding only
+		// whitespace would otherwise replace the parse error with an empty
+		// message, which model.Validate rejects.
+		if sanitized := provider.SanitizeMessage(stderr.String(), provider.MessageLimit); sanitized != "" {
+			message = sanitized
 		}
 		return failedMeasurement(durationMS, "invalid_output", message), nil
 	}
@@ -136,44 +137,8 @@ func (runner *Runner) setDefaults() {
 	}
 }
 
-func elapsedMS(start, end time.Time) int64 {
-	duration := end.Sub(start).Milliseconds()
-	if duration < 0 {
-		return 0
-	}
-	return duration
-}
-
 func timeoutMeasurement(durationMS int64) model.Measurement {
 	measurement := failedMeasurement(durationMS, "timeout", "Apple networkQuality timed out")
 	measurement.Failure.Stage = model.FailureStageTimeout
 	return measurement
-}
-
-func compact(value string) string {
-	value = strings.Join(strings.Fields(value), " ")
-	if len(value) > 240 {
-		return value[:240]
-	}
-	return value
-}
-
-type cappedBuffer struct {
-	bytes.Buffer
-	Limit int
-}
-
-func (buffer *cappedBuffer) Write(data []byte) (int, error) {
-	if buffer.Limit <= 0 {
-		return len(data), nil
-	}
-	remaining := buffer.Limit - buffer.Len()
-	if remaining > 0 {
-		if len(data) > remaining {
-			_, _ = buffer.Buffer.Write(data[:remaining])
-		} else {
-			_, _ = buffer.Buffer.Write(data)
-		}
-	}
-	return len(data), nil
 }

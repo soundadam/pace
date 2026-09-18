@@ -25,8 +25,8 @@ JSON 模式的字段：
 | `optionalProviders` | 可选 provider 状态：`apple`、`ookla`；它们缺失**不影响** `ready` |
 | `consentAccepted` | 是否存在当前政策版本的 M-Lab 同意记录 |
 | `historyPath` | 历史目录路径 |
-| `preferencesPath` / `setupComplete` | 偏好文件路径与首次设置是否完成 |
-| `language` / `dailyStations` | 已完成设置时的语言与日常测速站 |
+| `preferencesPath` / `setupComplete` | 偏好文件路径与首次设置是否完成。偏好文件损坏或来自旧 schema 时为 `false`，不算错误——下次运行会重新进入设置 |
+| `dailyStations` | 已完成设置时的日常测速站 |
 
 ## 常见问题与处理
 

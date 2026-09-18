@@ -1,6 +1,7 @@
 package preferences
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,7 +10,7 @@ import (
 func TestStoreRoundTripAndModes(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "app", "preferences.json")
 	store := New(path)
-	config := Config{SchemaVersion: SchemaVersion, Language: LanguageEnglish, DailyStations: []string{"tongji", "mlab"}}
+	config := Config{SchemaVersion: SchemaVersion, DailyStations: []string{"tongji", "mlab"}}
 	if err := store.Save(config); err != nil {
 		t.Fatal(err)
 	}
@@ -17,7 +18,7 @@ func TestStoreRoundTripAndModes(t *testing.T) {
 	if err != nil || !exists {
 		t.Fatalf("Load() = %#v, %t, %v", loaded, exists, err)
 	}
-	if loaded.Language != LanguageEnglish || len(loaded.DailyStations) != 2 || loaded.DailyStations[0] != "tongji" {
+	if len(loaded.DailyStations) != 2 || loaded.DailyStations[0] != "tongji" {
 		t.Fatalf("loaded = %#v", loaded)
 	}
 	for _, item := range []struct {
@@ -31,6 +32,38 @@ func TestStoreRoundTripAndModes(t *testing.T) {
 		if info.Mode().Perm() != item.mode {
 			t.Fatalf("%s mode = %o, want %o", item.path, info.Mode().Perm(), item.mode)
 		}
+	}
+}
+
+func TestLoadReportsLegacySchemaAndGarbageAsUnusable(t *testing.T) {
+	for _, testCase := range []struct {
+		name    string
+		content string
+	}{
+		{name: "legacy schema", content: `{"schemaVersion":1,"language":"zh-CN","dailyStations":["tongji"]}`},
+		{name: "malformed json", content: "{not json"},
+		{name: "empty stations", content: `{"schemaVersion":2,"dailyStations":[]}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "preferences.json")
+			if err := os.WriteFile(path, []byte(testCase.content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			config, exists, err := New(path).Load()
+			if exists {
+				t.Fatalf("exists = true for unusable preferences: %#v", config)
+			}
+			if !errors.Is(err, ErrUnusable) {
+				t.Fatalf("err = %v, want ErrUnusable", err)
+			}
+		})
+	}
+}
+
+func TestLoadReportsMissingFileAsNotConfigured(t *testing.T) {
+	config, exists, err := New(filepath.Join(t.TempDir(), "preferences.json")).Load()
+	if exists || err != nil {
+		t.Fatalf("Load() = %#v, %t, %v", config, exists, err)
 	}
 }
 

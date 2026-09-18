@@ -146,12 +146,14 @@ func (app *App) loadOrConfigurePreferences(ctx context.Context) (preferences.Con
 		return preferences.DefaultConfig(), nil
 	}
 	config, exists, err := app.Preferences.Load()
-	if err != nil {
+	if err != nil && !errors.Is(err, preferences.ErrUnusable) {
 		return preferences.Config{}, err
 	}
 	if exists {
 		return config, nil
 	}
+	// A missing file, and equally one that is malformed or written by another
+	// schema version, means "not configured yet": run setup and overwrite it.
 	config, err = app.SetupFactory(ctx, app.In, app.Out, app.Version, preferences.DefaultConfig())
 	if err != nil {
 		return preferences.Config{}, err
@@ -170,7 +172,7 @@ func (app *App) executeSetup(ctx context.Context, jsonMode bool) int {
 		return app.fail(false, "preferences_error", "preferences store is not configured", 1)
 	}
 	current, exists, err := app.Preferences.Load()
-	if err != nil {
+	if err != nil && !errors.Is(err, preferences.ErrUnusable) {
 		return app.fail(false, "preferences_error", err.Error(), 1)
 	}
 	if !exists {
@@ -186,14 +188,7 @@ func (app *App) executeSetup(ctx context.Context, jsonMode bool) int {
 	if err := app.Preferences.Save(config); err != nil {
 		return app.fail(false, "preferences_error", err.Error(), 1)
 	}
-	return app.writeValue(false, config, app.preferenceSavedMessage(config))
-}
-
-func (app *App) preferenceSavedMessage(config preferences.Config) string {
-	if config.Language == preferences.LanguageChinese {
-		return "日常测速站设置已保存：" + strings.Join(config.DailyStations, ", ")
-	}
-	return "Daily stations saved: " + strings.Join(config.DailyStations, ", ")
+	return app.writeValue(false, config, "Daily stations saved: "+strings.Join(config.DailyStations, ", "))
 }
 
 // extractGlobalJSON strips the global --json flag from anywhere in the
@@ -642,7 +637,6 @@ func (app *App) executeDoctor(ctx context.Context, jsonMode bool) int {
 		payload["preferencesPath"] = app.Preferences.Path
 		payload["setupComplete"] = exists && preferencesErr == nil
 		if preferencesErr == nil && exists {
-			payload["language"] = config.Language
 			payload["dailyStations"] = config.DailyStations
 		}
 	}

@@ -27,9 +27,7 @@ type Station struct {
 	ID                string
 	Label             string
 	Description       string
-	DescriptionZH     string
 	UseCase           string
-	UseCaseZH         string
 	IPv4              *Spec
 	IPv6              *Spec
 	MLab              bool
@@ -86,9 +84,7 @@ var stations = []Station{
 		ID:                "nju-campus",
 		Label:             "NJU Campus",
 		Description:       "NJU campus-internal service",
-		DescriptionZH:     "南京大学校内测速服务",
 		UseCase:           "Check campus-network or NJU VPN connectivity",
-		UseCaseZH:         "检查校园网或南大 VPN 连通性",
 		IPv4:              &Spec{Provider: model.ProviderNJUCampusIPv4, StationID: "nju-campus", Label: "NJU Campus · IPv4", Family: "ipv4", ServerName: "NJU Campus IPv4", ServerURL: "http://speed.nju.edu.cn"},
 		IPv6:              &Spec{Provider: model.ProviderNJUCampusIPv6, StationID: "nju-campus", Label: "NJU Campus · IPv6", Family: "ipv6", ServerName: "NJU Campus IPv6", ServerURL: "http://speed6.nju.edu.cn"},
 		DailyEligible:     true,
@@ -98,9 +94,7 @@ var stations = []Station{
 		ID:                "mlab",
 		Label:             "M-Lab",
 		Description:       "public Internet NDT7 measurement",
-		DescriptionZH:     "公共互联网 NDT7 测速",
-		UseCase:           "Measure the current Internet or proxy egress",
-		UseCaseZH:         "测量当前互联网或代理出口；结果与公网 IP 会公开",
+		UseCase:           "Measure the current Internet or proxy egress; results and your public IP are published",
 		MLab:              true,
 		DailyEligible:     true,
 		TerminalSupported: true,
@@ -109,9 +103,7 @@ var stations = []Station{
 		ID:                "apple",
 		Label:             "Apple",
 		Description:       "macOS networkQuality · public network quality",
-		DescriptionZH:     "macOS networkQuality · 公网质量",
 		UseCase:           "Measure throughput and responsiveness under load using Apple's macOS tool",
-		UseCaseZH:         "使用 macOS 内置工具测量吞吐与负载下响应性",
 		AutoProvider:      model.ProviderApple,
 		DailyEligible:     true,
 		TerminalSupported: true,
@@ -120,9 +112,7 @@ var stations = []Station{
 		ID:                "ookla",
 		Label:             "Ookla",
 		Description:       "official Speedtest CLI · dynamic nearby server",
-		DescriptionZH:     "官方 Speedtest CLI · 动态选择附近服务器",
 		UseCase:           "Show the selected server sponsor and carrier-side reference",
-		UseCaseZH:         "显示所选测速服务器赞助方，作为运营商侧参考",
 		AutoProvider:      model.ProviderOokla,
 		DailyEligible:     true,
 		TerminalSupported: true,
@@ -131,9 +121,7 @@ var stations = []Station{
 		ID:                "tongji",
 		Label:             "Tongji",
 		Description:       "Tongji University · Shanghai",
-		DescriptionZH:     "同济大学 · 上海",
 		UseCase:           "Regional reference for Shanghai and the Yangtze River Delta",
-		UseCaseZH:         "上海及江浙沪方向的区域参考",
 		IPv4:              &Spec{Provider: model.ProviderTongjiIPv4, StationID: "tongji", Label: "Tongji · IPv4", Family: "ipv4", ServerName: "Tongji", ServerURL: "https://dev.tongji.edu.cn/speedtest"},
 		DailyEligible:     true,
 		TerminalSupported: true,
@@ -142,9 +130,7 @@ var stations = []Station{
 		ID:                "qlu",
 		Label:             "QLU",
 		Description:       "Qilu University of Technology · Jinan, Shandong",
-		DescriptionZH:     "齐鲁工业大学 · 山东济南",
 		UseCase:           "Shandong regional reference; results vary with route and server load",
-		UseCaseZH:         "山东方向的区域参考；结果会随线路和服务负载变化",
 		IPv4:              &Spec{Provider: model.ProviderQLUIPv4, StationID: "qlu", Label: "QLU · IPv4", Family: "ipv4", ServerName: "QLU", ServerURL: "https://speed.qlu.edu.cn"},
 		DailyEligible:     true,
 		TerminalSupported: true,
@@ -153,9 +139,7 @@ var stations = []Station{
 		ID:                "cernet",
 		Label:             "CERNET",
 		Description:       "CERNET public LibreSpeed station",
-		DescriptionZH:     "中国教育网公共测速站",
-		UseCase:           "Education-network reference; availability can vary",
-		UseCaseZH:         "当前不可用；仅保留显式命令兼容",
+		UseCase:           "Education-network reference; explicit --targets only, availability can vary",
 		IPv4:              &Spec{Provider: model.ProviderCERNETIPv4, StationID: "cernet", Label: "CERNET · IPv4", Family: "ipv4", ServerName: "CERNET", ServerURL: "http://speedtest.sec.edu.cn"},
 		TerminalSupported: true,
 	},
@@ -163,9 +147,7 @@ var stations = []Station{
 		ID:                "nju-edge",
 		Label:             "NJU Edge",
 		Description:       "NJU public Internet speed test",
-		DescriptionZH:     "南京大学互联网测速",
 		UseCase:           "Web only: http://test.nju.edu.cn",
-		UseCaseZH:         "仅网页： http://test.nju.edu.cn",
 		IPv4:              &Spec{Provider: model.ProviderNJUEdgeIPv4, StationID: "nju-edge", Label: "NJU Edge · IPv4", Family: "ipv4", ServerName: "NJU Edge IPv4", ServerURL: "http://test.nju.edu.cn"},
 		IPv6:              &Spec{Provider: model.ProviderNJUEdgeIPv6, StationID: "nju-edge", Label: "NJU Edge · IPv6", Family: "ipv6", ServerName: "NJU Edge IPv6", ServerURL: "http://test6.nju.edu.cn"},
 		TerminalSupported: false,
@@ -353,7 +335,6 @@ func probeStations(ctx context.Context, stationList []Station, timeout time.Dura
 	var mutex sync.Mutex
 	var wait sync.WaitGroup
 	for _, station := range stationList {
-		station := station
 		if !station.TerminalSupported {
 			mutex.Lock()
 			for _, spec := range []*Spec{station.IPv4, station.IPv6} {
@@ -392,11 +373,10 @@ func probeStations(ctx context.Context, stationList []Station, timeout time.Dura
 			if spec == nil {
 				continue
 			}
-			spec := *spec
 			wait.Add(1)
 			go func() {
 				defer wait.Done()
-				result := probe(ctx, spec, timeout)
+				result := probe(ctx, *spec, timeout)
 				mutex.Lock()
 				results = append(results, result)
 				mutex.Unlock()

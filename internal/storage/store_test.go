@@ -62,7 +62,40 @@ func TestListNewestFirstAndLimit(t *testing.T) {
 	}
 }
 
-func TestDefaultHistoryDirPreservesLegacyData(t *testing.T) {
+func TestDefaultHistoryDirIsAlwaysCurrentPath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(configDir, "soundprobe", "history", "v1")
+
+	path, err := DefaultHistoryDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != want {
+		t.Fatalf("DefaultHistoryDir() = %q, want %q", path, want)
+	}
+
+	// A pre-rename njuprobe history directory must not influence the result.
+	legacy := filepath.Join(configDir, "njuprobe", "history", "v1")
+	if err := os.MkdirAll(legacy, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path, err = DefaultHistoryDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != want {
+		t.Fatalf("DefaultHistoryDir() with legacy directory present = %q, want %q", path, want)
+	}
+}
+
+func TestListWithOnlyLegacyHistoryIsEmptyWithoutError(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", "")
@@ -75,25 +108,20 @@ func TestDefaultHistoryDirPreservesLegacyData(t *testing.T) {
 	if err := os.MkdirAll(legacy, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(legacy, "old-run.json"), []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	path, err := DefaultHistoryDir()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if path != legacy {
-		t.Fatalf("DefaultHistoryDir() = %q, want legacy %q", path, legacy)
-	}
-
-	current := filepath.Join(configDir, "soundprobe", "history", "v1")
-	if err := os.MkdirAll(current, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	path, err = DefaultHistoryDir()
+	items, err := New(path).List(0)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("List() error = %v, want nil for missing history directory", err)
 	}
-	if path != current {
-		t.Fatalf("DefaultHistoryDir() = %q, want current %q", path, current)
+	if len(items) != 0 {
+		t.Fatalf("List() = %#v, want empty", items)
 	}
 }
 

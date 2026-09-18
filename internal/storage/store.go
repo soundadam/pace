@@ -28,19 +28,7 @@ func DefaultHistoryDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve user config directory: %w", err)
 	}
-	current := filepath.Join(configDir, "soundprobe", "history", "v1")
-	legacy := filepath.Join(configDir, "njuprobe", "history", "v1")
-	return preferExistingPath(current, legacy), nil
-}
-
-func preferExistingPath(current, legacy string) string {
-	if _, err := os.Stat(current); err == nil {
-		return current
-	}
-	if _, err := os.Stat(legacy); err == nil {
-		return legacy
-	}
-	return current
+	return filepath.Join(configDir, "soundprobe", "history", "v1"), nil
 }
 
 func (store *Store) Save(summary model.RunSummary) error {

@@ -327,9 +327,9 @@ and retains experiment data indefinitely.`,
 func (app *App) newSetupCommand(state *execution) *cobra.Command {
 	return &cobra.Command{
 		Use:   "setup",
-		Short: "Configure language and daily stations",
+		Short: "Configure daily stations",
 		Long: `Setup opens the interactive first-run configuration to choose the
-interface language and the daily station plan. It requires a terminal.`,
+daily station plan. It requires a terminal.`,
 		GroupID: groupConfig,
 		Args:    rejectArgs("setup does not accept arguments"),
 		RunE: func(cmd *cobra.Command, _ []string) error {

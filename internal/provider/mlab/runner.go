@@ -2,12 +2,10 @@ package mlab
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
@@ -77,7 +75,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 	if err != nil {
 		return model.Measurement{}, fmt.Errorf("open ndt7 stdout: %w", err)
 	}
-	stderr := newCappedBuffer(32 * 1024)
+	stderr := provider.NewCappedBuffer(32 * 1024)
 	command.Stderr = stderr
 	if err := command.Start(); err != nil {
 		return model.Measurement{}, fmt.Errorf("start ndt7 helper: %w", err)
@@ -95,10 +93,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 	}
 	scanErr := scanner.Err()
 	waitErr := command.Wait()
-	durationMS := runner.Now().Sub(startedAt).Milliseconds()
-	if durationMS < 0 {
-		durationMS = 0
-	}
+	durationMS := provider.ElapsedMS(startedAt, runner.Now())
 
 	if errors.Is(measurementCtx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
 		return cancelledMeasurement(helperVersion, durationMS), nil
@@ -115,7 +110,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 		if parseErr == nil && measurement.Status == model.ProviderStatusFailed {
 			return measurement, nil
 		}
-		message := sanitizeFailure(stderr.String())
+		message := provider.SanitizeMessage(stderr.String(), provider.MessageLimit)
 		if message == "" {
 			message = "ndt7 helper exited without a complete result"
 		}
@@ -197,29 +192,4 @@ func cancelledMeasurement(version string, durationMS int64) model.Measurement {
 			Message: "M-Lab measurement was cancelled",
 		},
 	}
-}
-
-type cappedBuffer struct {
-	buffer bytes.Buffer
-	limit  int
-}
-
-func newCappedBuffer(limit int) *cappedBuffer {
-	return &cappedBuffer{limit: limit}
-}
-
-func (buffer *cappedBuffer) Write(data []byte) (int, error) {
-	originalLength := len(data)
-	remaining := buffer.limit - buffer.buffer.Len()
-	if remaining > 0 {
-		if len(data) > remaining {
-			data = data[:remaining]
-		}
-		_, _ = buffer.buffer.Write(data)
-	}
-	return originalLength, nil
-}
-
-func (buffer *cappedBuffer) String() string {
-	return strings.TrimSpace(buffer.buffer.String())
 }

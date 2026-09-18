@@ -29,7 +29,6 @@ type selectorModel struct {
 	done      bool
 	cancelled bool
 	errorText string
-	language  preferences.Language
 }
 
 func SelectPlan(ctx context.Context, input io.Reader, output io.Writer, version string) (target.Plan, error) {
@@ -83,9 +82,7 @@ func newSelectorModelConfigured(version string, probeResults []target.ProbeResul
 		probes[probeKey(result.StationID, result.Family)] = result
 	}
 	stations := target.Stations()
-	language := preferences.LanguageEnglish
 	if config.Validate() == nil {
-		language = config.Language
 		allowed := map[string]bool{}
 		for _, id := range config.DailyStations {
 			allowed[id] = true
@@ -104,7 +101,6 @@ func newSelectorModelConfigured(version string, probeResults []target.ProbeResul
 		probes:   probes,
 		family:   target.FamilyIPv4,
 		selected: map[string]bool{},
-		language: language,
 	}
 	model.applyRecommendation()
 	return model
@@ -134,7 +130,7 @@ func (selector *selectorModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if selector.stationSupported(station, selector.family) {
 			selector.selected[station.ID] = !selector.selected[station.ID]
 		} else {
-			selector.errorText = selector.text(station.Label+" 不支持 "+string(selector.family), station.Label+" does not support "+string(selector.family))
+			selector.errorText = station.Label + " does not support " + string(selector.family)
 		}
 	case "a":
 		selector.applyRecommendation()
@@ -147,7 +143,7 @@ func (selector *selectorModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case "enter":
 		ids := selector.selectedIDs()
 		if len(ids) == 0 {
-			selector.errorText = selector.text("请至少选择一个测速站", "select at least one measurement target")
+			selector.errorText = "select at least one measurement target"
 			return selector, nil
 		}
 		plan, err := target.NewPlan(ids, selector.family)
@@ -170,8 +166,8 @@ func (selector *selectorModel) View() tea.View {
 		return tea.NewView("")
 	}
 	lines := []string{
-		fmt.Sprintf("soundprobe %s · %s", selector.version, selector.text("选择测速站", "select measurement targets")),
-		fmt.Sprintf("%s  %s   [4] IPv4  [6] IPv6  [d] dual", selector.text("地址族", "Address family"), selector.family),
+		fmt.Sprintf("soundprobe %s · select measurement targets", selector.version),
+		fmt.Sprintf("Address family  %s   [4] IPv4  [6] IPv6  [d] dual", selector.family),
 		"",
 	}
 	for index, station := range selector.stations {
@@ -187,19 +183,15 @@ func (selector *selectorModel) View() tea.View {
 			check = "[-]"
 		}
 		status := selector.stationStatus(station)
-		description := station.Description
-		if selector.language == preferences.LanguageChinese {
-			description = station.DescriptionZH
-		}
 		lines = append(lines,
-			fmt.Sprintf("%s%s %-12s %s", cursor, check, station.Label, truncateRunes(description, 44)),
+			fmt.Sprintf("%s%s %-12s %s", cursor, check, station.Label, truncateRunes(station.Description, 44)),
 			fmt.Sprintf("      %s", truncateRunes(status, 68)),
 		)
 	}
 	lines = append(lines,
 		"",
-		selector.text("↑/↓ 移动   Space 选择   a 推荐   Enter 开始   q 取消", "↑/↓ move   Space toggle   a recommended   Enter start   q cancel"),
-		selector.text("修改日常站点：soundprobe setup", "Change daily stations: soundprobe setup"),
+		"↑/↓ move   Space toggle   a recommended   Enter start   q cancel",
+		"Change daily stations: soundprobe setup",
 	)
 	if selector.errorText != "" {
 		lines = append(lines, "Error: "+selector.errorText)
@@ -281,19 +273,19 @@ func (selector *selectorModel) stationSupported(station target.Station, family t
 
 func (selector *selectorModel) stationStatus(station target.Station) string {
 	if !station.TerminalSupported {
-		return selector.text("终端不支持 · ", "terminal unsupported · ") + station.UnsupportedReason
+		return "terminal unsupported · " + station.UnsupportedReason
 	}
 	if !target.PlatformAvailable(station) {
-		return selector.text("当前系统不可用 · 仅 macOS", "unavailable on this OS · macOS only")
+		return "unavailable on this OS · macOS only"
 	}
 	if station.MLab || station.AutoProvider != "" {
 		switch station.AutoProvider {
 		case model.ProviderApple:
-			return selector.text("macOS 内置 networkQuality", "macOS built-in networkQuality")
+			return "macOS built-in networkQuality"
 		case model.ProviderOokla:
-			return selector.text("需要官方 Ookla CLI", "requires official Ookla CLI")
+			return "requires official Ookla CLI"
 		default:
-			return selector.text("自动选择节点", "automatic node")
+			return "automatic node"
 		}
 	}
 	families := []string{}
@@ -328,13 +320,6 @@ func (selector *selectorModel) stationStatus(station target.Station) string {
 	}
 	sort.Strings(parts)
 	return strings.Join(parts, " · ")
-}
-
-func (selector *selectorModel) text(chinese, english string) string {
-	if selector.language == preferences.LanguageChinese {
-		return chinese
-	}
-	return english
 }
 
 func probeKey(stationID, family string) string {

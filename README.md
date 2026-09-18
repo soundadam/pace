@@ -51,7 +51,7 @@ soundprobe doctor --json
 soundprobe
 ```
 
-首次在交互终端运行会选择语言与日常测速站（macOS 默认预选
+首次在交互终端运行会选择日常测速站（macOS 默认预选
 `nju-campus`、`mlab`、`apple`；Linux/Windows 预选 `nju-campus`、
 `mlab`），之后可用 `soundprobe setup` 修改。Homebrew Formula 当前只
 覆盖 macOS；Linux/Windows 使用 release 二进制或源码构建，详见

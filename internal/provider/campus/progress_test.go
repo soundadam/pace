@@ -71,7 +71,7 @@ func TestConsumeProgressLineRejectsMalformedProtocol(t *testing.T) {
 
 func TestScanProgressOutputSeparatesErrors(t *testing.T) {
 	input := strings.NewReader("{\"type\":\"progress\",\"test\":\"download\",\"elapsed_ms\":1000,\"bytes\":6250000,\"mbps\":50}\nFailed to get download speed: reset\n")
-	errorsOutput := newCappedBuffer(1024)
+	errorsOutput := provider.NewCappedBuffer(1024)
 	var events []provider.ProgressEvent
 	err := scanProgressOutput(input, errorsOutput, model.ProviderNJUCampusIPv4, "speed.nju.edu.cn", provider.Request{Progress: func(event provider.ProgressEvent) {
 		events = append(events, event)

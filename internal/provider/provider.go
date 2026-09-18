@@ -62,6 +62,8 @@ type Runner interface {
 	Run(context.Context, Request) (model.RunSummary, error)
 }
 
+// PreflightRunner is implemented by runners and individual providers that can
+// check their own availability before a run starts.
 type PreflightRunner interface {
 	Preflight(context.Context, Request) error
 }
@@ -76,10 +78,6 @@ type RequestPreparer interface {
 
 type MeasurementProvider interface {
 	Measure(context.Context, Request) (model.Measurement, error)
-}
-
-type ProviderPreflight interface {
-	Preflight(context.Context, Request) error
 }
 
 type SummaryRunner struct {
@@ -138,7 +136,7 @@ func (runner SummaryRunner) Prepare(ctx context.Context, request Request) (Reque
 
 	kept := make([]providerEntry, 0, len(entries))
 	for _, entry := range entries {
-		if preflight, ok := entry.provider.(ProviderPreflight); ok {
+		if preflight, ok := entry.provider.(PreflightRunner); ok {
 			providerRequest := request
 			providerRequest.Targets = []model.Provider{entry.kind}
 			if err := preflight.Preflight(ctx, providerRequest); err != nil {

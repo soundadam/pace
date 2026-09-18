@@ -157,7 +157,7 @@ func (accumulator *accumulator) consume(line []byte, request provider.Request) e
 		}
 		request.Report(event)
 	case "error":
-		message := sanitizeFailure(value.Failure)
+		message := provider.SanitizeMessage(value.Failure, provider.MessageLimit)
 		if message == "" {
 			message = "M-Lab test failed"
 		}
@@ -334,12 +334,4 @@ func classifyFailure(test, message string) (model.FailureStage, string) {
 	default:
 		return model.FailureStageConnect, "connect_failure"
 	}
-}
-
-func sanitizeFailure(message string) string {
-	message = strings.Join(strings.Fields(message), " ")
-	if len(message) > 256 {
-		message = message[:256]
-	}
-	return message
 }

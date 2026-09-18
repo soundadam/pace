@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/soundadam/soundprobe/internal/helper"
 	"github.com/soundadam/soundprobe/internal/model"
@@ -145,8 +144,8 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 		"--" + target.family,
 	}
 	command := exec.CommandContext(measurementCtx, resolved.Path, args...)
-	stdout := newCappedBuffer(128 * 1024)
-	stderr := newCappedBuffer(16 * 1024)
+	stdout := provider.NewCappedBuffer(128 * 1024)
+	stderr := provider.NewCappedBuffer(16 * 1024)
 	command.Stdin = bytes.NewReader(target.serverList)
 	command.Stdout = stdout
 	progressOutput, pipeErr := command.StderrPipe()
@@ -162,10 +161,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 		}
 		err = command.Wait()
 	}
-	durationMS := runner.Now().Sub(startedAt).Milliseconds()
-	if durationMS < 0 {
-		durationMS = 0
-	}
+	durationMS := provider.ElapsedMS(startedAt, runner.Now())
 	if progressErr != nil {
 		return model.Measurement{}, fmt.Errorf("parse LibreSpeed progress output: %w", progressErr)
 	}
@@ -178,7 +174,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 			return failedMeasurement(target.provider, target.label, target.family, helperVersion, durationMS, model.FailureStageTimeout, "timeout", target.label+" measurement timed out"), nil
 		}
 		stage, code := classifyFailure(stderr.String())
-		message := sanitizeMessage(stderr.String())
+		message := provider.SanitizeMessage(stderr.String(), provider.MessageLimit)
 		if message == "" {
 			message = "LibreSpeed helper exited before producing a result"
 		}
@@ -201,7 +197,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 	return measurement, nil
 }
 
-func scanProgressOutput(input io.Reader, errorsOutput *cappedBuffer, measurementProvider model.Provider, server string, request provider.Request) error {
+func scanProgressOutput(input io.Reader, errorsOutput io.Writer, measurementProvider model.Provider, server string, request provider.Request) error {
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 16*1024), 256*1024)
 	for scanner.Scan() {
@@ -345,8 +341,8 @@ func (runner *Runner) probeVersion(ctx context.Context, path string) (string, er
 	versionCtx, cancel := context.WithTimeout(ctx, runner.VersionTimeout)
 	defer cancel()
 	command := exec.CommandContext(versionCtx, path, "--version")
-	stdout := newCappedBuffer(16 * 1024)
-	stderr := newCappedBuffer(4 * 1024)
+	stdout := provider.NewCappedBuffer(16 * 1024)
+	stderr := provider.NewCappedBuffer(4 * 1024)
 	command.Stdout = stdout
 	command.Stderr = stderr
 	if err := command.Run(); err != nil {
@@ -356,7 +352,7 @@ func (runner *Runner) probeVersion(ctx context.Context, path string) (string, er
 		if errors.Is(versionCtx.Err(), context.DeadlineExceeded) {
 			return "", fmt.Errorf("%w: LibreSpeed version probe timed out", provider.ErrUnavailable)
 		}
-		message := sanitizeMessage(stderr.String())
+		message := provider.SanitizeMessage(stderr.String(), provider.MessageLimit)
 		if message == "" {
 			message = "helper could not report its version"
 		}
@@ -449,58 +445,4 @@ func classifyFailure(message string) (model.FailureStage, string) {
 	default:
 		return model.FailureStageHelper, "helper_failure"
 	}
-}
-
-func sanitizeMessage(message string) string {
-	message = strings.TrimSpace(message)
-	if message == "" {
-		return ""
-	}
-	var builder strings.Builder
-	builder.Grow(len(message))
-	previousSpace := false
-	for _, character := range message {
-		if unicode.IsControl(character) || unicode.IsSpace(character) {
-			if !previousSpace {
-				builder.WriteByte(' ')
-				previousSpace = true
-			}
-			continue
-		}
-		builder.WriteRune(character)
-		previousSpace = false
-		if builder.Len() >= 256 {
-			break
-		}
-	}
-	return strings.TrimSpace(builder.String())
-}
-
-type cappedBuffer struct {
-	buffer bytes.Buffer
-	limit  int
-}
-
-func newCappedBuffer(limit int) *cappedBuffer {
-	return &cappedBuffer{limit: limit}
-}
-
-func (buffer *cappedBuffer) Write(data []byte) (int, error) {
-	originalLength := len(data)
-	remaining := buffer.limit - buffer.buffer.Len()
-	if remaining > 0 {
-		if len(data) > remaining {
-			data = data[:remaining]
-		}
-		_, _ = buffer.buffer.Write(data)
-	}
-	return originalLength, nil
-}
-
-func (buffer *cappedBuffer) Bytes() []byte {
-	return buffer.buffer.Bytes()
-}
-
-func (buffer *cappedBuffer) String() string {
-	return buffer.buffer.String()
 }

@@ -75,8 +75,9 @@ Windows: %AppData%\soundprobe\history\v1\<run-id>.json
 - 写入使用同目录临时文件 + fsync + 原子 rename；
 - 不保存逐秒采样，只存最终摘要；
 - 历史**永不自动清理**；
-- 旧的 schema-v1 历史保持可读；若存在早期 `njuprobe` 目录的历史或
-  同意记录，迁移完成前会继续读取，新写入使用 `soundprobe` 目录。
+- 旧的 schema-v1 历史保持可读；
+- 早期 `njuprobe` 目录的历史与同意记录**不再被读取**（破坏性变更）。文件
+  仍在磁盘上，但只有 `soundprobe` 目录会被读写。
 
 ## 导出
 

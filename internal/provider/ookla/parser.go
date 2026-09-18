@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/soundprobe/internal/provider"
 )
 
 type result struct {
@@ -66,7 +67,7 @@ func parseResult(data []byte, helperVersion string, durationMS int64) (model.Mea
 		if lower := strings.ToLower(parsed.Error); strings.Contains(lower, "license") || strings.Contains(lower, "gdpr") {
 			code = "license_required"
 		}
-		measurement := failedMeasurement(helperVersion, durationMS, model.FailureStageHelper, code, compact(parsed.Error))
+		measurement := failedMeasurement(helperVersion, durationMS, model.FailureStageHelper, code, provider.SanitizeMessage(parsed.Error, provider.MessageLimit))
 		measurement.PingMS = parsed.Ping.Latency
 		measurement.JitterMS = parsed.Ping.Jitter
 		if parsed.Server.ID != nil {
@@ -212,12 +213,4 @@ func ensureEOF(decoder *json.Decoder) error {
 		return fmt.Errorf("decode trailing Ookla JSON: %w", err)
 	}
 	return nil
-}
-
-func compact(value string) string {
-	value = strings.Join(strings.Fields(value), " ")
-	if len(value) > 240 {
-		return value[:240]
-	}
-	return value
 }

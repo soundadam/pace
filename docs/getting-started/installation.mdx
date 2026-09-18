@@ -124,6 +124,7 @@ Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/
 Windows: %AppData%\soundprobe\
 ```
 
-如果系统中仍有早期 `njuprobe` 的历史或 M-Lab 同意记录，soundprobe 会在
-迁移完成前继续读取它们；新写入使用 `soundprobe` 目录。详见
+早期 `njuprobe` 版本写入的历史与 M-Lab 同意记录**不再被读取**。这些文件
+仍保留在磁盘上，但 soundprobe 只从上面的 `soundprobe` 目录读取——升级后
+历史会显示为空，并需要重新确认 M-Lab 同意。详见
 [JSON 输出与自动化](/reference/json-and-automation)。
