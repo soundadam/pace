@@ -22,6 +22,43 @@ var runCommand commandRunner = func(ctx context.Context, name string, args ...st
 	return exec.CommandContext(ctx, name, args...).Output()
 }
 
+// currentOS and resolvConfPath name the platform facts the snapshot branches
+// on. They are variables rather than constants so tests can drive every
+// platform path from one host.
+var (
+	currentOS      = runtime.GOOS
+	resolvConfPath = "/etc/resolv.conf"
+)
+
+// netInterface is one network interface with its addresses already resolved.
+// Enumeration goes through systemInterfaces so address discovery can be
+// exercised without depending on the host's real interface list.
+type netInterface struct {
+	Name      string
+	Flags     net.Flags
+	Addresses []net.Addr
+}
+
+var systemInterfaces = func() ([]netInterface, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]netInterface, 0, len(interfaces))
+	for _, networkInterface := range interfaces {
+		addresses, err := networkInterface.Addrs()
+		if err != nil {
+			continue
+		}
+		result = append(result, netInterface{
+			Name:      networkInterface.Name,
+			Flags:     networkInterface.Flags,
+			Addresses: addresses,
+		})
+	}
+	return result, nil
+}
+
 func Snapshot() model.NetworkContext {
 	ctx, cancel := context.WithTimeout(context.Background(), snapshotTimeout)
 	defer cancel()
@@ -43,7 +80,7 @@ func Snapshot() model.NetworkContext {
 	result.DNSServers = dnsServers(ctx)
 
 	kind := classifyInterface(activeInterface)
-	if runtime.GOOS == "darwin" && activeInterface != "" {
+	if currentOS == "darwin" && activeInterface != "" {
 		if hardwarePort := macHardwarePort(ctx, activeInterface); hardwarePort != "" {
 			kind = classifyHardwarePort(hardwarePort)
 		}
@@ -60,8 +97,8 @@ func Snapshot() model.NetworkContext {
 }
 
 func operatingSystem(ctx context.Context) string {
-	if runtime.GOOS != "darwin" {
-		return runtime.GOOS
+	if currentOS != "darwin" {
+		return currentOS
 	}
 	output, err := runCommand(ctx, "sw_vers", "-productVersion")
 	if err != nil {
@@ -75,7 +112,7 @@ func operatingSystem(ctx context.Context) string {
 }
 
 func defaultRoute(ctx context.Context) (string, string) {
-	switch runtime.GOOS {
+	switch currentOS {
 	case "darwin":
 		output, err := runCommand(ctx, "route", "-n", "get", "default")
 		if err != nil {
@@ -150,16 +187,12 @@ func interfaceNameForAddress(address string) string {
 	if address == "" {
 		return ""
 	}
-	interfaces, err := net.Interfaces()
+	interfaces, err := systemInterfaces()
 	if err != nil {
 		return ""
 	}
 	for _, networkInterface := range interfaces {
-		addresses, err := networkInterface.Addrs()
-		if err != nil {
-			continue
-		}
-		for _, candidate := range addresses {
+		for _, candidate := range networkInterface.Addresses {
 			ip, _, err := net.ParseCIDR(candidate.String())
 			if err == nil && ip.String() == address {
 				return networkInterface.Name
@@ -170,7 +203,7 @@ func interfaceNameForAddress(address string) string {
 }
 
 func localAddresses(activeInterface string) ([]string, []string) {
-	interfaces, err := net.Interfaces()
+	interfaces, err := systemInterfaces()
 	if err != nil {
 		return nil, nil
 	}
@@ -182,11 +215,7 @@ func localAddresses(activeInterface string) ([]string, []string) {
 		if activeInterface != "" && networkInterface.Name != activeInterface {
 			continue
 		}
-		addresses, err := networkInterface.Addrs()
-		if err != nil {
-			continue
-		}
-		for _, address := range addresses {
+		for _, address := range networkInterface.Addresses {
 			ip, _, err := net.ParseCIDR(address.String())
 			if err != nil {
 				ip = net.ParseIP(strings.Split(address.String(), "%")[0])
@@ -205,19 +234,19 @@ func localAddresses(activeInterface string) ([]string, []string) {
 }
 
 func dnsServers(ctx context.Context) []string {
-	if runtime.GOOS == "darwin" {
+	if currentOS == "darwin" {
 		output, err := runCommand(ctx, "scutil", "--dns")
 		if err == nil {
 			return parseDarwinDNS(string(output))
 		}
 	}
-	if runtime.GOOS == "windows" {
+	if currentOS == "windows" {
 		output, err := runCommand(ctx, "ipconfig", "/all")
 		if err == nil {
 			return parseWindowsDNS(string(output))
 		}
 	}
-	data, err := os.ReadFile("/etc/resolv.conf")
+	data, err := os.ReadFile(resolvConfPath)
 	if err != nil {
 		return nil
 	}
@@ -256,6 +285,13 @@ func parseWindowsDNS(output string) []string {
 	inDNS := false
 	for _, line := range strings.Split(output, "\n") {
 		trimmed := strings.TrimSpace(line)
+		// Continuation lines carry nothing but an address. They must be
+		// recognised before the "label: value" split, because an IPv6 server
+		// contains colons and would otherwise be mistaken for a new label.
+		if inDNS && net.ParseIP(trimmed) != nil {
+			servers = appendValidIP(servers, trimmed)
+			continue
+		}
 		if _, value, found := strings.Cut(line, ":"); found {
 			label := strings.ToLower(strings.TrimSpace(strings.SplitN(line, ":", 2)[0]))
 			inDNS = strings.Contains(label, "dns servers") || strings.Contains(label, "dns server")
@@ -264,12 +300,9 @@ func parseWindowsDNS(output string) []string {
 			}
 			continue
 		}
-		if inDNS {
-			if ip := net.ParseIP(trimmed); ip != nil {
-				servers = appendValidIP(servers, trimmed)
-			} else if trimmed != "" {
-				inDNS = false
-			}
+		// Any other non-empty line ends the run of DNS servers.
+		if inDNS && trimmed != "" {
+			inDNS = false
 		}
 	}
 	return uniqueSorted(servers)

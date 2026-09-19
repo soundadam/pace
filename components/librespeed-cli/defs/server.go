@@ -205,7 +205,12 @@ type progressJSONReport struct {
 
 func writeProgressJSON(test string, counter *BytesCounter) {
 	elapsed := time.Since(counter.start)
-	if elapsed <= 0 {
+	// elapsed_ms is emitted with Duration.Milliseconds, which truncates, and
+	// the consumer of this stream rejects any sample whose elapsed_ms is not
+	// positive. Skipping sub-millisecond samples keeps the producer invariant
+	// ("every emitted sample has elapsed_ms >= 1") aligned with that
+	// requirement, and still guards the division below.
+	if elapsed < time.Millisecond {
 		return
 	}
 	bytes := counter.Total()

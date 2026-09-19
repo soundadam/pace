@@ -115,23 +115,32 @@ func (store *Store) Load(runID string) (model.RunSummary, error) {
 	return summary, nil
 }
 
-func (store *Store) List(limit int) ([]model.RunSummary, error) {
+// List returns saved runs newest first, together with the names of the files it
+// could not read.  History accumulates across releases and is never pruned
+// automatically, so a summary written by an older, incompatible schema version
+// must not hide every other run: unreadable files are skipped and named rather
+// than failing the call.  They are left untouched on disk, and naming them is
+// the caller's job, which keeps a `--json` stdout a single document.
+//
+// A limit of zero returns every readable run.
+func (store *Store) List(limit int) ([]model.RunSummary, []string, error) {
 	if store == nil || store.HistoryDir == "" {
-		return nil, errors.New("history store is not configured")
+		return nil, nil, errors.New("history store is not configured")
 	}
 	if limit < 0 {
-		return nil, errors.New("history limit must be non-negative")
+		return nil, nil, errors.New("history limit must be non-negative")
 	}
 
 	entries, err := os.ReadDir(store.HistoryDir)
 	if errors.Is(err, os.ErrNotExist) {
-		return []model.RunSummary{}, nil
+		return []model.RunSummary{}, nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("read history directory: %w", err)
+		return nil, nil, fmt.Errorf("read history directory: %w", err)
 	}
 
 	summaries := make([]model.RunSummary, 0, len(entries))
+	skipped := make([]string, 0)
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
@@ -139,7 +148,8 @@ func (store *Store) List(limit int) ([]model.RunSummary, error) {
 		runID := strings.TrimSuffix(entry.Name(), ".json")
 		summary, err := store.Load(runID)
 		if err != nil {
-			return nil, fmt.Errorf("load history entry %q: %w", entry.Name(), err)
+			skipped = append(skipped, entry.Name())
+			continue
 		}
 		summaries = append(summaries, summary)
 	}
@@ -150,7 +160,7 @@ func (store *Store) List(limit int) ([]model.RunSummary, error) {
 	if limit > 0 && len(summaries) > limit {
 		summaries = summaries[:limit]
 	}
-	return summaries, nil
+	return summaries, skipped, nil
 }
 
 func (store *Store) path(runID string) string {

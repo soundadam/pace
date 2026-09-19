@@ -40,7 +40,10 @@ func (c *BytesCounter) Write(p []byte) (int, error) {
 func (c *BytesCounter) Read(p []byte) (int, error) {
 	c.lock.Lock()
 	n, err := c.reader.Read(p)
-	c.total += uint64(n)
+	// total is published with sync/atomic by Write and consumed with
+	// sync/atomic by Total; this mutex only guards reader and pos, so the
+	// counter must be bumped atomically here as well.
+	atomic.AddUint64(&c.total, uint64(n))
 	c.pos += n
 	if c.pos == c.uploadSize {
 		c.resetReader()
@@ -62,7 +65,10 @@ func (c *BytesCounter) SetUploadSize(uploadSize int) {
 
 // AvgBytes returns the average bytes/second
 func (c *BytesCounter) AvgBytes() float64 {
-	return float64(c.total) / time.Since(c.start).Seconds()
+	// Read through Total: Download and Upload call this while their request
+	// goroutines are still writing to the counter, and the spinner's
+	// PostUpdate callback calls it from a third goroutine.
+	return float64(c.Total()) / time.Since(c.start).Seconds()
 }
 
 // AvgMbps returns the average mbits/second
@@ -124,7 +130,7 @@ func (c *BytesCounter) Total() uint64 {
 
 // CurrentSpeed returns the current bytes/second
 func (c *BytesCounter) CurrentSpeed() float64 {
-	return float64(c.total) / time.Since(c.start).Seconds()
+	return float64(c.Total()) / time.Since(c.start).Seconds()
 }
 
 // SeekWrapper is a wrapper around io.Reader to give it a noop io.Seeker interface

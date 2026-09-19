@@ -32,7 +32,7 @@ func TestRunnerMeasuresIPv4WithExactArguments(t *testing.T) {
 	gotArgs := readArgs(t, argsPath)
 	wantArgs := []string{
 		"--local-json", "-",
-		"--server", IPv4ServerID,
+		"--server", "1",
 		"--duration", "10",
 		"--concurrent", "3",
 		"--no-icmp",
@@ -44,23 +44,45 @@ func TestRunnerMeasuresIPv4WithExactArguments(t *testing.T) {
 	if !reflect.DeepEqual(gotArgs, wantArgs) {
 		t.Fatalf("args = %#v, want %#v", gotArgs, wantArgs)
 	}
-	assertFakeServerList(t, argsPath)
+	assertServerList(t, argsPath, njuCampusConfig("ipv4"))
 }
 
-func TestRunnerMeasuresIPv6WithoutFallback(t *testing.T) {
+func TestRunnerMeasuresIPv6WithLocalServerList(t *testing.T) {
 	runner, argsPath := newFakeRunner(t, "testdata/librespeed-success-ipv6.json", HelperVersion, 0, "")
-	measurement, err := runner.Measure(context.Background(), provider.Request{Command: model.CommandCampus, IPFamily: "ipv6"})
+	runner.Config = njuCampusConfig("ipv6")
+	measurement, err := runner.Measure(context.Background(), provider.Request{Command: model.CommandCampus})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if measurement.Provider != model.ProviderNJUCampusIPv6 {
+		t.Fatalf("provider = %q", measurement.Provider)
 	}
 	if measurement.ServerFQDN == nil || *measurement.ServerFQDN != "speed6.nju.edu.cn" {
 		t.Fatalf("server = %v", measurement.ServerFQDN)
 	}
 	gotArgs := readArgs(t, argsPath)
-	if !containsPair(gotArgs, "--local-json", "-") || !containsPair(gotArgs, "--server", IPv6ServerID) || !contains(gotArgs, "--ipv6") || contains(gotArgs, "--ipv4") || contains(gotArgs, "--server-json") {
+	if !containsPair(gotArgs, "--local-json", "-") || !containsPair(gotArgs, "--server", "1") || !contains(gotArgs, "--ipv6") || contains(gotArgs, "--ipv4") || contains(gotArgs, "--server-json") {
 		t.Fatalf("IPv6 arguments = %#v", gotArgs)
 	}
-	assertFakeServerList(t, argsPath)
+	assertServerList(t, argsPath, njuCampusConfig("ipv6"))
+}
+
+func TestRunnerRejectsZeroConfig(t *testing.T) {
+	runner, argsPath := newFakeRunner(t, "testdata/librespeed-success-ipv4.json", HelperVersion, 0, "")
+	runner.Config = Config{}
+
+	preflightErr := runner.Preflight(context.Background(), provider.Request{Command: model.CommandCampus})
+	if preflightErr == nil || !strings.Contains(preflightErr.Error(), "no station configured") {
+		t.Fatalf("preflight error = %v", preflightErr)
+	}
+
+	_, err := runner.Measure(context.Background(), provider.Request{Command: model.CommandCampus})
+	if err == nil || !strings.Contains(err.Error(), "no station configured") {
+		t.Fatalf("measure error = %v", err)
+	}
+	if _, statErr := os.Stat(argsPath); !os.IsNotExist(statErr) {
+		t.Fatalf("helper was invoked for a zero Config: %v", statErr)
+	}
 }
 
 func TestTargetRunnerUsesPinnedExternalStationIdentity(t *testing.T) {
@@ -205,23 +227,14 @@ func TestRunnerClassifiesConnectionReset(t *testing.T) {
 }
 
 func TestValidateServerListRejectsUnexpectedSelectedServer(t *testing.T) {
-	err := validateServerList([]byte(`[{"id":2,"server":"http://speed.nju.edu.cn"}]`), IPv6ServerID, "speed6.nju.edu.cn")
+	err := validateServerList([]byte(`[{"id":1,"server":"http://speed.nju.edu.cn"}]`), "1", "speed6.nju.edu.cn")
 	if err == nil || !strings.Contains(err.Error(), "unexpected host") {
 		t.Fatalf("error = %v", err)
 	}
 }
 
-func TestPinnedServerListCoversBothFamilies(t *testing.T) {
-	if err := validateServerList([]byte(pinnedServerListJSON), IPv4ServerID, "speed.nju.edu.cn"); err != nil {
-		t.Fatal(err)
-	}
-	if err := validateServerList([]byte(pinnedServerListJSON), IPv6ServerID, "speed6.nju.edu.cn"); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestValidateServerListRejectsUnsafeScheme(t *testing.T) {
-	err := validateServerList([]byte(`[{"id":1,"server":"ftp://speed.nju.edu.cn"}]`), IPv4ServerID, "speed.nju.edu.cn")
+	err := validateServerList([]byte(`[{"id":1,"server":"ftp://speed.nju.edu.cn"}]`), "1", "speed.nju.edu.cn")
 	if err == nil || !strings.Contains(err.Error(), "unsupported URL scheme") {
 		t.Fatalf("error = %v", err)
 	}
@@ -307,6 +320,7 @@ exit %d
 
 	clock := time.Date(2026, 7, 21, 8, 0, 0, 0, time.UTC)
 	return &Runner{
+		Config: njuCampusConfig("ipv4"),
 		Resolver: helper.Resolver{
 			ExecutablePath:   executable,
 			WorkingDirectory: root,
@@ -322,19 +336,48 @@ exit %d
 	}, argsPath
 }
 
-func assertFakeServerList(t *testing.T, argsPath string) {
+// njuCampusConfig mirrors the NJU campus station specs that the registry in
+// internal/target feeds to campus.NewTarget.
+func njuCampusConfig(family string) Config {
+	if family == "ipv6" {
+		return Config{
+			Provider:   model.ProviderNJUCampusIPv6,
+			Label:      "NJU Campus · IPv6",
+			Family:     "ipv6",
+			ServerName: "NJU Campus IPv6",
+			ServerURL:  "http://speed6.nju.edu.cn",
+		}
+	}
+	return Config{
+		Provider:   model.ProviderNJUCampusIPv4,
+		Label:      "NJU Campus · IPv4",
+		Family:     "ipv4",
+		ServerName: "NJU Campus IPv4",
+		ServerURL:  "http://speed.nju.edu.cn",
+	}
+}
+
+// assertServerList pins the single-entry LibreSpeed server list that the
+// configured station is rendered into and piped to the helper on stdin.
+func assertServerList(t *testing.T, argsPath string, config Config) {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(filepath.Dir(argsPath), "stdin.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got, want any
+	var got any
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Fatalf("stdin JSON: %v", err)
 	}
-	if err := json.Unmarshal([]byte(pinnedServerListJSON), &want); err != nil {
-		t.Fatal(err)
-	}
+	want := []any{map[string]any{
+		"id":       float64(1),
+		"name":     config.ServerName,
+		"server":   config.ServerURL,
+		"dlURL":    "/backend/garbage.php",
+		"ulURL":    "/backend/empty.php",
+		"pingURL":  "/backend/empty.php",
+		"getIpURL": "/backend/getIP.php",
+	}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("stdin = %#v, want %#v", got, want)
 	}

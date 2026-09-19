@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -53,12 +54,58 @@ func TestListNewestFirstAndLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	items, err := store.List(1)
+	items, skipped, err := store.List(1)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
 	if len(items) != 1 || items[0].RunID != "newer" {
 		t.Fatalf("List(1) = %#v, want newest only", items)
+	}
+	if len(skipped) != 0 {
+		t.Fatalf("List(1) skipped = %#v, want none", skipped)
+	}
+}
+
+// A file this build cannot read must not hide the runs it can: List skips it
+// and names it so the caller can report it on stderr.
+func TestListSkipsUnreadableEntriesAndNamesThem(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "history", "v2")
+	store := New(root)
+	readable := testSummary("readable", time.Date(2026, 7, 21, 8, 0, 0, 0, time.UTC))
+	if err := store.Save(readable); err != nil {
+		t.Fatal(err)
+	}
+	// A schema-v1 summary: structurally valid JSON this build refuses to load.
+	legacy := []byte(`{"schemaVersion":1,"runId":"legacy","command":"campus"}` + "\n")
+	if err := os.WriteFile(filepath.Join(root, "legacy.json"), legacy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "garbage.json"), []byte("not json\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Non-JSON files are ignored outright and never reported as skipped.
+	if err := os.WriteFile(filepath.Join(root, "notes.txt"), []byte("ignored\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	items, skipped, err := store.List(0)
+	if err != nil {
+		t.Fatalf("List() error = %v, want nil", err)
+	}
+	if len(items) != 1 || items[0].RunID != "readable" {
+		t.Fatalf("List() = %#v, want the readable run only", items)
+	}
+	if fmt.Sprint(skipped) != "[garbage.json legacy.json]" {
+		t.Fatalf("List() skipped = %#v, want garbage.json and legacy.json", skipped)
+	}
+
+	// The limit applies to readable runs, and skipped files are still reported.
+	items, skipped, err = store.List(1)
+	if err != nil {
+		t.Fatalf("List(1) error = %v", err)
+	}
+	if len(items) != 1 || len(skipped) != 2 {
+		t.Fatalf("List(1) = %#v, skipped = %#v", items, skipped)
 	}
 }
 
@@ -124,12 +171,15 @@ func TestListWithOnlyLegacyHistoryIsEmptyWithoutError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	items, err := New(path).List(0)
+	items, skipped, err := New(path).List(0)
 	if err != nil {
 		t.Fatalf("List() error = %v, want nil for missing history directory", err)
 	}
 	if len(items) != 0 {
 		t.Fatalf("List() = %#v, want empty", items)
+	}
+	if len(skipped) != 0 {
+		t.Fatalf("List() skipped = %#v, want nothing reported about retired directories", skipped)
 	}
 }
 

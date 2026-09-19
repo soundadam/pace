@@ -24,32 +24,9 @@ import (
 const (
 	HelperName          = "librespeed-cli"
 	HelperVersion       = "v1.0.13-campus.1"
-	IPv4ServerID        = "1"
-	IPv6ServerID        = "2"
 	ConcurrentRequests  = 3
 	MeasurementDuration = 10
 )
-
-const pinnedServerListJSON = `[
-  {
-    "id": 1,
-    "name": "NJU Speed Test v4",
-    "server": "http://speed.nju.edu.cn",
-    "dlURL": "/backend/garbage.php",
-    "ulURL": "/backend/empty.php",
-    "pingURL": "/backend/empty.php",
-    "getIpURL": "/backend/getIP.php"
-  },
-  {
-    "id": 2,
-    "name": "NJU Speed Test v6",
-    "server": "http://speed6.nju.edu.cn",
-    "dlURL": "/backend/garbage.php",
-    "ulURL": "/backend/empty.php",
-    "pingURL": "/backend/empty.php",
-    "getIpURL": "/backend/getIP.php"
-  }
-]`
 
 var versionPattern = regexp.MustCompile(`(?m)^librespeed-cli\s+(v?[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)\s`)
 
@@ -94,9 +71,9 @@ func NewTarget(resolver HelperResolver, config Config) *Runner {
 	return &Runner{Resolver: resolver, Config: config}
 }
 
-func (runner *Runner) Preflight(ctx context.Context, request provider.Request) error {
+func (runner *Runner) Preflight(ctx context.Context, _ provider.Request) error {
 	runner.setDefaults()
-	if _, err := runner.selectedTarget(request); err != nil {
+	if _, err := runner.selectedTarget(); err != nil {
 		return err
 	}
 	_, _, err := runner.prepareHelper(ctx)
@@ -105,7 +82,7 @@ func (runner *Runner) Preflight(ctx context.Context, request provider.Request) e
 
 func (runner *Runner) Measure(ctx context.Context, request provider.Request) (model.Measurement, error) {
 	runner.setDefaults()
-	target, err := runner.selectedTarget(request)
+	target, err := runner.selectedTarget()
 	if err != nil {
 		return model.Measurement{}, err
 	}
@@ -211,49 +188,40 @@ func scanProgressOutput(input io.Reader, errorsOutput io.Writer, measurementProv
 	return scanner.Err()
 }
 
-func (runner *Runner) selectedTarget(request provider.Request) (selectedTarget, error) {
-	if runner.Config.Provider != "" {
-		config := runner.Config
-		if !model.ProviderValid(config.Provider) || model.ProviderMethod(config.Provider) != model.MethodLibreSpeedThreeStream {
-			return selectedTarget{}, fmt.Errorf("invalid LibreSpeed provider %q", config.Provider)
-		}
-		if config.Family != "ipv4" && config.Family != "ipv6" {
-			return selectedTarget{}, fmt.Errorf("invalid LibreSpeed family %q", config.Family)
-		}
-		serverURL, err := url.Parse(config.ServerURL)
-		if err != nil || serverURL.Hostname() == "" {
-			return selectedTarget{}, fmt.Errorf("invalid LibreSpeed server URL %q", config.ServerURL)
-		}
-		label := config.Label
-		if label == "" {
-			label = string(config.Provider)
-		}
-		serverName := config.ServerName
-		if serverName == "" {
-			serverName = label
-		}
-		serverList, err := json.Marshal([]map[string]any{{
-			"id": 1, "name": serverName, "server": strings.TrimRight(config.ServerURL, "/"),
-			"dlURL": "/backend/garbage.php", "ulURL": "/backend/empty.php",
-			"pingURL": "/backend/empty.php", "getIpURL": "/backend/getIP.php",
-		}})
-		if err != nil {
-			return selectedTarget{}, fmt.Errorf("encode pinned LibreSpeed target: %w", err)
-		}
-		return selectedTarget{
-			provider: config.Provider, label: label, family: config.Family,
-			serverID: "1", expectedHost: serverURL.Hostname(), serverList: serverList,
-		}, nil
+func (runner *Runner) selectedTarget() (selectedTarget, error) {
+	config := runner.Config
+	if config.Provider == "" {
+		return selectedTarget{}, errors.New("LibreSpeed runner has no station configured: Runner.Config is empty, build the runner with campus.NewTarget and a station spec")
 	}
-
-	measurementProvider, family, serverID, expectedHost, err := selectedServer(request.IPFamily)
+	if !model.ProviderValid(config.Provider) || model.ProviderMethod(config.Provider) != model.MethodLibreSpeedThreeStream {
+		return selectedTarget{}, fmt.Errorf("invalid LibreSpeed provider %q", config.Provider)
+	}
+	if config.Family != "ipv4" && config.Family != "ipv6" {
+		return selectedTarget{}, fmt.Errorf("invalid LibreSpeed family %q", config.Family)
+	}
+	serverURL, err := url.Parse(config.ServerURL)
+	if err != nil || serverURL.Hostname() == "" {
+		return selectedTarget{}, fmt.Errorf("invalid LibreSpeed server URL %q", config.ServerURL)
+	}
+	label := config.Label
+	if label == "" {
+		label = string(config.Provider)
+	}
+	serverName := config.ServerName
+	if serverName == "" {
+		serverName = label
+	}
+	serverList, err := json.Marshal([]map[string]any{{
+		"id": 1, "name": serverName, "server": strings.TrimRight(config.ServerURL, "/"),
+		"dlURL": "/backend/garbage.php", "ulURL": "/backend/empty.php",
+		"pingURL": "/backend/empty.php", "getIpURL": "/backend/getIP.php",
+	}})
 	if err != nil {
-		return selectedTarget{}, err
+		return selectedTarget{}, fmt.Errorf("encode pinned LibreSpeed target: %w", err)
 	}
 	return selectedTarget{
-		provider: measurementProvider, label: "NJU Campus · " + strings.ToUpper(family),
-		family: family, serverID: serverID, expectedHost: expectedHost,
-		serverList: []byte(pinnedServerListJSON),
+		provider: config.Provider, label: label, family: config.Family,
+		serverID: "1", expectedHost: serverURL.Hostname(), serverList: serverList,
 	}, nil
 }
 
@@ -366,20 +334,6 @@ func (runner *Runner) probeVersion(ctx context.Context, path string) (string, er
 		return "", fmt.Errorf("%w: LibreSpeed helper version %s does not match required %s", provider.ErrUnavailable, version, HelperVersion)
 	}
 	return version, nil
-}
-
-// selectedServer maps the requested address family onto the pinned NJU campus
-// station.  Each family is a distinct measurement with its own stable provider
-// ID, exactly as `--targets nju-campus` resolves it.
-func selectedServer(requestedFamily string) (measurementProvider model.Provider, family, serverID, expectedHost string, err error) {
-	switch requestedFamily {
-	case "", "ipv4":
-		return model.ProviderNJUCampusIPv4, "ipv4", IPv4ServerID, "speed.nju.edu.cn", nil
-	case "ipv6":
-		return model.ProviderNJUCampusIPv6, "ipv6", IPv6ServerID, "speed6.nju.edu.cn", nil
-	default:
-		return "", "", "", "", fmt.Errorf("unsupported campus IP family %q", requestedFamily)
-	}
 }
 
 func (target selectedTarget) attempt(version string, durationMS int64) provider.Attempt {

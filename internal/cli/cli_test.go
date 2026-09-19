@@ -298,7 +298,7 @@ func TestNoSaveLeavesHistoryEmpty(t *testing.T) {
 	if exitCode != 0 {
 		t.Fatalf("exit code = %d, stderr = %q", exitCode, stderr.String())
 	}
-	items, err := app.History.List(0)
+	items, _, err := app.History.List(0)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
