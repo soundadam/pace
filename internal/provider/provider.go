@@ -80,12 +80,11 @@ type MeasurementProvider interface {
 	Measure(context.Context, Request) (model.Measurement, error)
 }
 
+// SummaryRunner executes an ordered target plan.  Providers are looked up by
+// provider ID only: one station identity maps to exactly one implementation,
+// and a request without targets is an error rather than an implicit plan.
 type SummaryRunner struct {
 	ToolVersion string
-	Campus      MeasurementProvider
-	MLab        MeasurementProvider
-	Apple       MeasurementProvider
-	Ookla       MeasurementProvider
 	Providers   map[model.Provider]MeasurementProvider
 	Now         func() time.Time
 	NewRunID    func() (string, error)
@@ -210,19 +209,12 @@ func (runner SummaryRunner) Run(ctx context.Context, request Request) (model.Run
 		request.Report(progressFromMeasurement(measurement))
 		if measurement.Status == model.ProviderStatusCancelled {
 			for _, remaining := range providers[index+1:] {
-				measurements = append(measurements, skippedMeasurement(remaining.kind))
+				measurements = append(measurements, SkippedMeasurement(remaining.kind))
 			}
 			break
 		}
 	}
 
-	targets := cloneProviders(request.Targets)
-	if len(targets) == 0 {
-		targets = make([]model.Provider, len(providers))
-		for index, entry := range providers {
-			targets[index] = entry.kind
-		}
-	}
 	summary := model.RunSummary{
 		SchemaVersion: model.SchemaVersion,
 		RunID:         runID,
@@ -230,7 +222,7 @@ func (runner SummaryRunner) Run(ctx context.Context, request Request) (model.Run
 		StartedAt:     startedAt,
 		EndedAt:       runner.Now(),
 		Command:       request.Command,
-		Targets:       targets,
+		Targets:       cloneProviders(request.Targets),
 		Status:        model.DeriveRunStatus(measurements),
 		Label:         request.Label,
 		Note:          request.Note,
@@ -297,89 +289,26 @@ type providerEntry struct {
 }
 
 func (runner SummaryRunner) providersFor(request Request) ([]providerEntry, error) {
-	entries := make([]providerEntry, 0, 8)
-	appendProvider := func(kind model.Provider, implementation MeasurementProvider) error {
+	if len(request.Targets) == 0 {
+		return nil, fmt.Errorf("command %q requires an ordered target plan", request.Command)
+	}
+	entries := make([]providerEntry, 0, len(request.Targets))
+	seen := make(map[model.Provider]struct{}, len(request.Targets))
+	for _, kind := range request.Targets {
+		if !model.ProviderValid(kind) {
+			return nil, fmt.Errorf("unsupported measurement target %q", kind)
+		}
+		if _, exists := seen[kind]; exists {
+			return nil, fmt.Errorf("duplicate measurement target %q", kind)
+		}
+		seen[kind] = struct{}{}
+		implementation := runner.Providers[kind]
 		if implementation == nil {
-			return fmt.Errorf("%w: %s", ErrUnavailable, kind)
+			return nil, fmt.Errorf("%w: %s", ErrUnavailable, kind)
 		}
 		entries = append(entries, providerEntry{kind: kind, provider: implementation})
-		return nil
-	}
-
-	if len(request.Targets) > 0 {
-		seen := make(map[model.Provider]struct{}, len(request.Targets))
-		for _, kind := range request.Targets {
-			if !model.ProviderValid(kind) {
-				return nil, fmt.Errorf("unsupported measurement target %q", kind)
-			}
-			if _, exists := seen[kind]; exists {
-				return nil, fmt.Errorf("duplicate measurement target %q", kind)
-			}
-			seen[kind] = struct{}{}
-			implementation := runner.Providers[kind]
-			if kind == model.ProviderMLab && implementation == nil {
-				implementation = runner.MLab
-			}
-			if kind == model.ProviderCampus && implementation == nil {
-				implementation = runner.Campus
-			}
-			if kind == model.ProviderApple && implementation == nil {
-				implementation = runner.Apple
-			}
-			if kind == model.ProviderOokla && implementation == nil {
-				implementation = runner.Ookla
-			}
-			if err := appendProvider(kind, implementation); err != nil {
-				return nil, err
-			}
-		}
-		return entries, nil
-	}
-
-	switch request.Command {
-	case model.CommandCampus:
-		if err := appendProvider(model.ProviderCampus, runner.Campus); err != nil {
-			return nil, err
-		}
-	case model.CommandMLab:
-		if err := appendProvider(model.ProviderMLab, runner.MLab); err != nil {
-			return nil, err
-		}
-	case model.CommandRun:
-		if err := appendProvider(model.ProviderCampus, runner.Campus); err != nil {
-			return nil, err
-		}
-		if err := appendProvider(model.ProviderMLab, runner.MLab); err != nil {
-			return nil, err
-		}
-		// Keep the legacy two-provider fallback usable for callers that build a
-		// SummaryRunner without optional helpers, while the production runner
-		// includes Apple in its default plan.
-		if runner.Apple != nil {
-			if err := appendProvider(model.ProviderApple, runner.Apple); err != nil {
-				return nil, err
-			}
-		}
-	case model.CommandApple:
-		if err := appendProvider(model.ProviderApple, runner.Apple); err != nil {
-			return nil, err
-		}
-	case model.CommandOokla:
-		if err := appendProvider(model.ProviderOokla, runner.Ookla); err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("unsupported measurement command %q", request.Command)
 	}
 	return entries, nil
-}
-
-func skippedMeasurement(provider model.Provider) model.Measurement {
-	return model.Measurement{
-		Provider: provider,
-		Method:   model.ProviderMethod(provider),
-		Status:   model.ProviderStatusSkipped,
-	}
 }
 
 func cloneProviders(providers []model.Provider) []model.Provider {

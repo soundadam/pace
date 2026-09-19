@@ -10,6 +10,56 @@ import (
 	"github.com/soundadam/soundprobe/internal/model"
 )
 
+func TestPlanForCommandAppliesTheRequestedFamily(t *testing.T) {
+	tests := []struct {
+		command model.Command
+		family  Family
+		want    []model.Provider
+	}{
+		{command: model.CommandCampus, family: FamilyIPv4, want: []model.Provider{model.ProviderNJUCampusIPv4}},
+		{command: model.CommandCampus, family: FamilyIPv6, want: []model.Provider{model.ProviderNJUCampusIPv6}},
+		{command: model.CommandCampus, family: FamilyDual, want: []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderNJUCampusIPv6}},
+		{command: model.CommandRun, family: FamilyIPv4, want: []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderMLab, model.ProviderApple}},
+		{command: model.CommandDomestic, family: FamilyIPv4, want: []model.Provider{model.ProviderTongjiIPv4, model.ProviderQLUIPv4}},
+		{command: model.CommandMLab, family: FamilyIPv4, want: []model.Provider{model.ProviderMLab}},
+		{command: model.CommandOokla, family: FamilyIPv4, want: []model.Provider{model.ProviderOokla}},
+	}
+	for _, test := range tests {
+		t.Run(string(test.command)+"/"+string(test.family), func(t *testing.T) {
+			plan, err := PlanForCommand(test.command, nil, test.family)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(plan.Providers) != len(test.want) {
+				t.Fatalf("providers = %#v, want %#v", plan.Providers, test.want)
+			}
+			for index := range test.want {
+				if plan.Providers[index] != test.want[index] {
+					t.Fatalf("providers = %#v, want %#v", plan.Providers, test.want)
+				}
+			}
+		})
+	}
+}
+
+func TestPlanForCommandRejectsNonDomesticStation(t *testing.T) {
+	if _, err := PlanForCommand(model.CommandDomestic, []string{"nju-campus"}, FamilyIPv4); err == nil {
+		t.Fatal("PlanForCommand() accepted a non-domestic station for `domestic`")
+	}
+	if _, err := PlanForCommand(model.CommandDomestic, []string{"cernet"}, FamilyIPv4); err != nil {
+		t.Fatalf("PlanForCommand() rejected an explicit domestic station: %v", err)
+	}
+	if _, err := PlanForCommand(model.CommandDomestic, nil, FamilyIPv6); err == nil {
+		t.Fatal("PlanForCommand() accepted IPv6 for `domestic`")
+	}
+}
+
+func TestPlanForCommandRejectsUnknownCommand(t *testing.T) {
+	if _, err := PlanForCommand(model.Command("nope"), nil, FamilyIPv4); err == nil {
+		t.Fatal("PlanForCommand() accepted an unknown command")
+	}
+}
+
 func TestExpandPreservesStationAndFamilyOrder(t *testing.T) {
 	providers, err := Expand([]string{"nju-campus", "mlab", "qlu"}, FamilyDual)
 	if err != nil {

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/soundadam/soundprobe/internal/configdir"
 )
 
 const (
@@ -31,11 +33,7 @@ func New(path string) *Store {
 }
 
 func DefaultPath() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("resolve user config directory: %w", err)
-	}
-	return filepath.Join(configDir, "soundprobe", "consent.json"), nil
+	return configdir.Path("consent.json")
 }
 
 func (store *Store) Status() (Record, bool, error) {

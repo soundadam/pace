@@ -10,7 +10,7 @@ import (
 )
 
 func TestSaveLoadAndModes(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "history", "v1")
+	root := filepath.Join(t.TempDir(), "history", "v2")
 	store := New(root)
 	summary := testSummary("run-1", time.Date(2026, 7, 21, 8, 0, 0, 0, time.UTC))
 
@@ -71,7 +71,7 @@ func TestDefaultHistoryDirIsAlwaysCurrentPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(configDir, "soundprobe", "history", "v1")
+	want := filepath.Join(configDir, "soundprobe", "history", "v2")
 
 	path, err := DefaultHistoryDir()
 	if err != nil {
@@ -104,12 +104,20 @@ func TestListWithOnlyLegacyHistoryIsEmptyWithoutError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	legacy := filepath.Join(configDir, "njuprobe", "history", "v1")
-	if err := os.MkdirAll(legacy, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(legacy, "old-run.json"), []byte("{}\n"), 0o600); err != nil {
-		t.Fatal(err)
+	// Both retired history locations: the pre-rename njuprobe directory, and
+	// the schema-v1 directory this build stopped reading. Neither is migrated
+	// and neither is enumerated, so a user holding only old runs sees an empty
+	// history rather than a warning about files they never asked about.
+	for _, legacy := range []string{
+		filepath.Join(configDir, "njuprobe", "history", "v1"),
+		filepath.Join(configDir, "soundprobe", "history", "v1"),
+	} {
+		if err := os.MkdirAll(legacy, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(legacy, "old-run.json"), []byte("{}\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	path, err := DefaultHistoryDir()
@@ -133,9 +141,10 @@ func testSummary(runID string, startedAt time.Time) model.RunSummary {
 		StartedAt:     startedAt,
 		EndedAt:       startedAt.Add(time.Second),
 		Command:       model.CommandCampus,
+		Targets:       []model.Provider{model.ProviderNJUCampusIPv4},
 		Status:        model.RunStatusSuccess,
 		Measurements: []model.Measurement{{
-			Provider:     model.ProviderCampus,
+			Provider:     model.ProviderNJUCampusIPv4,
 			Method:       "librespeed-three-stream",
 			Status:       model.ProviderStatusSuccess,
 			DownloadMbps: model.Pointer(100.0),

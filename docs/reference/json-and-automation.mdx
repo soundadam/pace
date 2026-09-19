@@ -22,16 +22,16 @@ icon: "code"
 
 ## 运行摘要（RunSummary）
 
-每次测量输出/保存一个运行摘要，schema 版本当前为 `1`：
+每次测量输出/保存一个运行摘要，schema 版本当前为 `2`：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `schemaVersion` | int | 固定 `1`；0.1 版写入的旧历史仍可读取 |
+| `schemaVersion` | int | 固定 `2`；schema-v1 历史**不再可读**，详见下方「历史文件」 |
 | `runId` | string | 运行 ID，也是历史文件名 |
 | `toolVersion` | string | soundprobe 版本 |
 | `startedAt` / `endedAt` | RFC 3339 时间 | 起止时间 |
 | `command` | string | `run`/`campus`/`edge`/`domestic`/`mlab`/`apple`/`ookla` |
-| `targets` | string[] | **按执行顺序**排列的 provider ID |
+| `targets` | string[] | **按执行顺序**排列的 provider ID；**必填且恒存在**，是本次运行的计划之书——`measurements` 必须与它在数量和顺序上一一对应 |
 | `status` | string | `success` / `partial` / `failed` / `cancelled` |
 | `label` / `note` | string \| null | `--label` / `--note` 的值 |
 | `network` | object | 本机网络快照（接口、SSID、网关、DNS、本地地址等） |
@@ -41,7 +41,7 @@ icon: "code"
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `provider` | string | 稳定 ID：`nju-campus-ipv4/-ipv6`、`nju-edge-ipv4/-ipv6`、`mlab`、`apple-networkquality`、`ookla-speedtest`、`cernet-ipv4`、`qlu-ipv4`、`tongji-ipv4`（旧 `campus` 仅用于读取 schema-v1 历史） |
+| `provider` | string | 稳定 ID：`nju-campus-ipv4/-ipv6`、`nju-edge-ipv4/-ipv6`、`mlab`、`apple-networkquality`、`ookla-speedtest`、`cernet-ipv4`、`qlu-ipv4`、`tongji-ipv4`。一个站点加一个地址族恰好对应一个 ID，不存在以命令命名的 provider ID |
 | `method` | string | `librespeed-three-stream` / `ndt7-single-stream` / `apple-networkquality` / `ookla-speedtest` |
 | `status` | string | `success` / `failed` / `skipped` / `cancelled`，语义见[结果解读](/concepts/reading-results) |
 | `ipFamily` | string \| null | helper 返回的实际地址族（`ipv4`/`ipv6`） |
@@ -52,7 +52,7 @@ icon: "code"
 | `pingMs` / `jitterMs` | number \| null | 延迟与抖动 |
 | `responsivenessRpm` / `downloadResponsivenessRpm` / `uploadResponsivenessRpm` | number，可缺省 | 负载下响应性（RPM），目前来自 Apple provider |
 | `downloadMbps` / `uploadMbps` | number \| null | 上下行速率；失败为 0 或部分实测值，skipped 为 null |
-| `downloadBytes` / `uploadBytes` | int \| null | 传输字节数 |
+| `downloadBytes` / `uploadBytes` | int \| null | 传输字节数。失败（`failed`）统一为 `0`——尝试发生过但没搬动数据；取消（`cancelled`）与跳过（`skipped`）保持 null，不谎称测到了 0 |
 | `durationMs` | int \| null | 测量时长 |
 | `concurrency` | int \| null | 并发流数（LibreSpeed 目标为 3） |
 | `helperVersion` | string \| null | 实际执行的 helper 版本 |
@@ -66,18 +66,24 @@ icon: "code"
 每次运行（除 `--no-save`）永久保存为一个 JSON 文件：
 
 ```text
-macOS:   ~/Library/Application Support/soundprobe/history/v1/<run-id>.json
-Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v1/<run-id>.json
-Windows: %AppData%\soundprobe\history\v1\<run-id>.json
+macOS:   ~/Library/Application Support/soundprobe/history/v2/<run-id>.json
+Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v2/<run-id>.json
+Windows: %AppData%\soundprobe\history\v2\<run-id>.json
 ```
 
 - 目录权限 `0700`、文件权限 `0600`；
 - 写入使用同目录临时文件 + fsync + 原子 rename；
 - 不保存逐秒采样，只存最终摘要；
 - 历史**永不自动清理**；
-- 旧的 schema-v1 历史保持可读；
-- 早期 `njuprobe` 目录的历史与同意记录**不再被读取**（破坏性变更）。文件
-  仍在磁盘上，但只有 `soundprobe` 目录会被读写。
+- 旧的 `history/v1` 目录**不再被读取**（破坏性变更）：schema-v1 历史无法被
+  本版本解析，且不做迁移。文件仍在磁盘上，升级后历史显示为空，但**不会**
+  因此产生任何告警——这与早期 `njuprobe` 目录的处理方式一致；
+- 早期 `njuprobe` 目录的历史与同意记录同样**不再被读取**。文件仍在磁盘上，
+  但只有 `soundprobe` 目录会被读写；
+- `history/v2` 里若有本版本读不出来的文件（例如写入中断损坏），该条会被
+  跳过并在 **stderr** 提示，`history`、`last`、`export` 仍然照常返回其余
+  可读记录，`--json` 的 stdout 依旧是单一文档。`show RUN_ID` 是例外：你点名
+  的那一条读不出来时直接报错退出，因为没有可降级的对象。
 
 ## 导出
 

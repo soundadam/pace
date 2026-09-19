@@ -35,6 +35,7 @@ func TestSkippedMeasurementRequiresNullSpeeds(t *testing.T) {
 		StartedAt:     now,
 		EndedAt:       now,
 		Command:       CommandMLab,
+		Targets:       []Provider{ProviderMLab},
 		Status:        RunStatusFailed,
 		Measurements: []Measurement{{
 			Provider:     ProviderMLab,
@@ -57,9 +58,10 @@ func TestRunStatusMustMatchMeasurements(t *testing.T) {
 		StartedAt:     now,
 		EndedAt:       now,
 		Command:       CommandCampus,
+		Targets:       []Provider{ProviderNJUCampusIPv4},
 		Status:        RunStatusPartial,
 		Measurements: []Measurement{{
-			Provider:     ProviderCampus,
+			Provider:     ProviderNJUCampusIPv4,
 			Method:       "librespeed-three-stream",
 			Status:       ProviderStatusSuccess,
 			DownloadMbps: Pointer(100.0),
@@ -86,7 +88,7 @@ func TestMeasurementMetadataValidation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			now := testTime()
 			measurement := Measurement{
-				Provider:     ProviderCampus,
+				Provider:     ProviderNJUCampusIPv4,
 				Method:       MethodLibreSpeedThreeStream,
 				Status:       ProviderStatusSuccess,
 				DownloadMbps: Pointer(100.0),
@@ -100,6 +102,7 @@ func TestMeasurementMetadataValidation(t *testing.T) {
 				StartedAt:     now,
 				EndedAt:       now,
 				Command:       CommandCampus,
+				Targets:       []Provider{ProviderNJUCampusIPv4},
 				Status:        RunStatusSuccess,
 				Measurements:  []Measurement{measurement},
 			}
@@ -119,9 +122,10 @@ func TestFailedMeasurementRequiresZeroOrMeasuredSpeeds(t *testing.T) {
 		StartedAt:     now,
 		EndedAt:       now,
 		Command:       CommandCampus,
+		Targets:       []Provider{ProviderNJUCampusIPv4},
 		Status:        RunStatusFailed,
 		Measurements: []Measurement{{
-			Provider: ProviderCampus,
+			Provider: ProviderNJUCampusIPv4,
 			Method:   "librespeed-three-stream",
 			Status:   ProviderStatusFailed,
 			Failure: &Failure{
@@ -165,7 +169,54 @@ func TestRunSummaryAcceptsExplicitMultiTargetPlan(t *testing.T) {
 	}
 }
 
-func TestRunSummaryStillAcceptsLegacyCampusHistory(t *testing.T) {
+func TestRunSummaryRequiresAnOrderedTargetPlan(t *testing.T) {
+	now := testTime()
+	summary := RunSummary{
+		SchemaVersion: SchemaVersion,
+		RunID:         "plan-less-run",
+		ToolVersion:   "test",
+		StartedAt:     now,
+		EndedAt:       now.Add(time.Second),
+		Command:       CommandCampus,
+		Status:        RunStatusSuccess,
+		Measurements: []Measurement{{
+			Provider:     ProviderNJUCampusIPv4,
+			Method:       MethodLibreSpeedThreeStream,
+			Status:       ProviderStatusSuccess,
+			DownloadMbps: Pointer(100.0),
+			UploadMbps:   Pointer(50.0),
+		}},
+	}
+	if err := summary.Validate(); err == nil {
+		t.Fatal("Validate() accepted a summary without a target plan")
+	}
+}
+
+func TestRunSummaryRejectsSupersededSchemaVersion(t *testing.T) {
+	now := testTime()
+	summary := RunSummary{
+		SchemaVersion: 1,
+		RunID:         "legacy-campus-run",
+		ToolVersion:   "0.1.3",
+		StartedAt:     now,
+		EndedAt:       now.Add(time.Second),
+		Command:       CommandCampus,
+		Targets:       []Provider{ProviderNJUCampusIPv4},
+		Status:        RunStatusSuccess,
+		Measurements: []Measurement{{
+			Provider:     ProviderNJUCampusIPv4,
+			Method:       MethodLibreSpeedThreeStream,
+			Status:       ProviderStatusSuccess,
+			DownloadMbps: Pointer(100.0),
+			UploadMbps:   Pointer(50.0),
+		}},
+	}
+	if err := summary.Validate(); err == nil {
+		t.Fatal("Validate() accepted a schema-v1 summary")
+	}
+}
+
+func TestRunSummaryRejectsRetiredCampusProvider(t *testing.T) {
 	now := testTime()
 	summary := RunSummary{
 		SchemaVersion: SchemaVersion,
@@ -174,17 +225,18 @@ func TestRunSummaryStillAcceptsLegacyCampusHistory(t *testing.T) {
 		StartedAt:     now,
 		EndedAt:       now.Add(time.Second),
 		Command:       CommandCampus,
+		Targets:       []Provider{Provider("campus")},
 		Status:        RunStatusSuccess,
 		Measurements: []Measurement{{
-			Provider:     ProviderCampus,
+			Provider:     Provider("campus"),
 			Method:       MethodLibreSpeedThreeStream,
 			Status:       ProviderStatusSuccess,
 			DownloadMbps: Pointer(100.0),
 			UploadMbps:   Pointer(50.0),
 		}},
 	}
-	if err := summary.Validate(); err != nil {
-		t.Fatal(err)
+	if err := summary.Validate(); err == nil {
+		t.Fatal("Validate() accepted the retired campus provider ID")
 	}
 }
 

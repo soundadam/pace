@@ -90,10 +90,6 @@ type selectedTarget struct {
 	serverList   []byte
 }
 
-func New(resolver HelperResolver) *Runner {
-	return &Runner{Resolver: resolver}
-}
-
 func NewTarget(resolver HelperResolver, config Config) *Runner {
 	return &Runner{Resolver: resolver, Config: config}
 }
@@ -116,7 +112,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 	resolved, helperVersion, err := runner.prepareHelper(ctx)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return cancelledMeasurement(target.provider, target.label, target.family, "", 0), nil
+			return provider.CancelledMeasurement(target.attempt("", 0), target.label+" measurement was cancelled"), nil
 		}
 		return model.Measurement{}, err
 	}
@@ -168,10 +164,10 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 
 	if err != nil {
 		if errors.Is(measurementCtx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
-			return cancelledMeasurement(target.provider, target.label, target.family, helperVersion, durationMS), nil
+			return provider.CancelledMeasurement(target.attempt(helperVersion, durationMS), target.label+" measurement was cancelled"), nil
 		}
 		if errors.Is(measurementCtx.Err(), context.DeadlineExceeded) {
-			return failedMeasurement(target.provider, target.label, target.family, helperVersion, durationMS, model.FailureStageTimeout, "timeout", target.label+" measurement timed out"), nil
+			return provider.FailedMeasurement(target.attempt(helperVersion, durationMS), model.FailureStageTimeout, "timeout", target.label+" measurement timed out"), nil
 		}
 		stage, code := classifyFailure(stderr.String())
 		message := provider.SanitizeMessage(stderr.String(), provider.MessageLimit)
@@ -181,12 +177,12 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 		if stage == model.FailureStageHelper {
 			return model.Measurement{}, fmt.Errorf("LibreSpeed helper failed: %s", message)
 		}
-		return failedMeasurement(target.provider, target.label, target.family, helperVersion, durationMS, stage, code, message), nil
+		return provider.FailedMeasurement(target.attempt(helperVersion, durationMS), stage, code, message), nil
 	}
 
 	measurement, err := parseResult(stdout.Bytes(), target.provider, target.family, helperVersion, durationMS)
 	if errors.Is(err, errNoResult) {
-		return failedMeasurement(target.provider, target.label, target.family, helperVersion, durationMS, model.FailureStageConnect, "server_unreachable", target.label+" server did not produce a measurement"), nil
+		return provider.FailedMeasurement(target.attempt(helperVersion, durationMS), model.FailureStageConnect, "server_unreachable", target.label+" server did not produce a measurement"), nil
 	}
 	if err != nil {
 		return model.Measurement{}, fmt.Errorf("parse LibreSpeed helper output: %w", err)
@@ -250,12 +246,12 @@ func (runner *Runner) selectedTarget(request provider.Request) (selectedTarget, 
 		}, nil
 	}
 
-	family, serverID, expectedHost, err := selectedServer(request.IPFamily)
+	measurementProvider, family, serverID, expectedHost, err := selectedServer(request.IPFamily)
 	if err != nil {
 		return selectedTarget{}, err
 	}
 	return selectedTarget{
-		provider: model.ProviderCampus, label: "NJU Campus · " + strings.ToUpper(family),
+		provider: measurementProvider, label: "NJU Campus · " + strings.ToUpper(family),
 		family: family, serverID: serverID, expectedHost: expectedHost,
 		serverList: []byte(pinnedServerListJSON),
 	}, nil
@@ -372,53 +368,29 @@ func (runner *Runner) probeVersion(ctx context.Context, path string) (string, er
 	return version, nil
 }
 
-func selectedServer(requestedFamily string) (family, serverID, expectedHost string, err error) {
+// selectedServer maps the requested address family onto the pinned NJU campus
+// station.  Each family is a distinct measurement with its own stable provider
+// ID, exactly as `--targets nju-campus` resolves it.
+func selectedServer(requestedFamily string) (measurementProvider model.Provider, family, serverID, expectedHost string, err error) {
 	switch requestedFamily {
 	case "", "ipv4":
-		return "ipv4", IPv4ServerID, "speed.nju.edu.cn", nil
+		return model.ProviderNJUCampusIPv4, "ipv4", IPv4ServerID, "speed.nju.edu.cn", nil
 	case "ipv6":
-		return "ipv6", IPv6ServerID, "speed6.nju.edu.cn", nil
+		return model.ProviderNJUCampusIPv6, "ipv6", IPv6ServerID, "speed6.nju.edu.cn", nil
 	default:
-		return "", "", "", fmt.Errorf("unsupported campus IP family %q", requestedFamily)
+		return "", "", "", "", fmt.Errorf("unsupported campus IP family %q", requestedFamily)
 	}
 }
 
-func failedMeasurement(measurementProvider model.Provider, label, family, version string, durationMS int64, stage model.FailureStage, code, message string) model.Measurement {
-	zero := 0.0
-	return model.Measurement{
-		Provider:      measurementProvider,
-		Method:        model.MethodLibreSpeedThreeStream,
-		Status:        model.ProviderStatusFailed,
-		IPFamily:      model.Pointer(family),
-		ServerName:    model.Pointer(label),
-		DownloadMbps:  model.Pointer(zero),
-		UploadMbps:    model.Pointer(zero),
-		DurationMS:    model.Pointer(durationMS),
-		Concurrency:   model.Pointer(ConcurrentRequests),
-		HelperVersion: optionalVersion(version),
-		Failure:       &model.Failure{Stage: stage, Code: code, Message: message},
+func (target selectedTarget) attempt(version string, durationMS int64) provider.Attempt {
+	return provider.Attempt{
+		Provider:      target.provider,
+		IPFamily:      target.family,
+		ServerName:    target.label,
+		Concurrency:   ConcurrentRequests,
+		HelperVersion: version,
+		DurationMS:    durationMS,
 	}
-}
-
-func cancelledMeasurement(measurementProvider model.Provider, label, family, version string, durationMS int64) model.Measurement {
-	return model.Measurement{
-		Provider:      measurementProvider,
-		Method:        model.MethodLibreSpeedThreeStream,
-		Status:        model.ProviderStatusCancelled,
-		IPFamily:      model.Pointer(family),
-		ServerName:    model.Pointer(label),
-		DurationMS:    model.Pointer(durationMS),
-		Concurrency:   model.Pointer(ConcurrentRequests),
-		HelperVersion: optionalVersion(version),
-		Failure:       &model.Failure{Stage: model.FailureStageCancelled, Code: "cancelled", Message: label + " measurement was cancelled"},
-	}
-}
-
-func optionalVersion(version string) *string {
-	if version == "" {
-		return nil
-	}
-	return model.Pointer(version)
 }
 
 func classifyFailure(message string) (model.FailureStage, string) {

@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-const SchemaVersion = 1
+// SchemaVersion identifies the run-summary contract.  Version 2 removed the
+// ambiguous `campus` provider ID and made the ordered `targets` array
+// mandatory, so a version-1 summary is not readable by this build.
+const SchemaVersion = 2
 
 type Command string
 
@@ -23,9 +26,7 @@ const (
 type Provider string
 
 const (
-	// ProviderCampus is retained for schema-v1 history compatibility.
-	ProviderCampus Provider = "campus"
-	ProviderMLab   Provider = "mlab"
+	ProviderMLab Provider = "mlab"
 
 	ProviderNJUCampusIPv4 Provider = "nju-campus-ipv4"
 	ProviderNJUCampusIPv6 Provider = "nju-campus-ipv6"
@@ -127,7 +128,7 @@ type RunSummary struct {
 	StartedAt     time.Time      `json:"startedAt"`
 	EndedAt       time.Time      `json:"endedAt"`
 	Command       Command        `json:"command"`
-	Targets       []Provider     `json:"targets,omitempty"`
+	Targets       []Provider     `json:"targets"`
 	Status        RunStatus      `json:"status"`
 	Label         *string        `json:"label"`
 	Note          *string        `json:"note"`
@@ -158,26 +159,27 @@ func (summary RunSummary) Validate() error {
 		return fmt.Errorf("invalid run status %q", summary.Status)
 	}
 
-	expectedProviders, err := summary.expectedProviders()
-	if err != nil {
-		return err
+	// The ordered target list is the run's plan of record: it is resolved once,
+	// with the requested address family already applied, and every measurement
+	// must line up with it one-for-one.
+	if len(summary.Targets) == 0 {
+		return errors.New("at least one target is required")
 	}
-	if len(summary.Measurements) != len(expectedProviders) {
-		return fmt.Errorf("command %q requires %d measurements, got %d", summary.Command, len(expectedProviders), len(summary.Measurements))
+	seenTargets := make(map[Provider]struct{}, len(summary.Targets))
+	for index, measurementTarget := range summary.Targets {
+		if !ProviderValid(measurementTarget) {
+			return fmt.Errorf("target %d: invalid provider %q", index, measurementTarget)
+		}
+		if _, exists := seenTargets[measurementTarget]; exists {
+			return fmt.Errorf("target %d: duplicate provider %q", index, measurementTarget)
+		}
+		seenTargets[measurementTarget] = struct{}{}
 	}
-	seenProviders := make(map[Provider]struct{}, len(summary.Measurements))
+	if len(summary.Measurements) != len(summary.Targets) {
+		return fmt.Errorf("command %q requires %d measurements, got %d", summary.Command, len(summary.Targets), len(summary.Measurements))
+	}
 	for index, measurement := range summary.Measurements {
-		if !ProviderValid(measurement.Provider) {
-			return fmt.Errorf("measurement %d: invalid provider %q", index, measurement.Provider)
-		}
-		if _, exists := seenProviders[measurement.Provider]; exists {
-			return fmt.Errorf("measurement %d: duplicate provider %q", index, measurement.Provider)
-		}
-		seenProviders[measurement.Provider] = struct{}{}
-		if _, expected := expectedProviders[measurement.Provider]; !expected {
-			return fmt.Errorf("measurement %d: provider %q is not valid for command %q", index, measurement.Provider, summary.Command)
-		}
-		if len(summary.Targets) > 0 && measurement.Provider != summary.Targets[index] {
+		if measurement.Provider != summary.Targets[index] {
 			return fmt.Errorf("measurement %d: provider %q does not match ordered target %q", index, measurement.Provider, summary.Targets[index])
 		}
 		if measurement.Method != ProviderMethod(measurement.Provider) {
@@ -205,48 +207,9 @@ func (command Command) valid() bool {
 	}
 }
 
-func (summary RunSummary) expectedProviders() (map[Provider]struct{}, error) {
-	if len(summary.Targets) == 0 {
-		return summary.Command.expectedProviders(), nil
-	}
-	expected := make(map[Provider]struct{}, len(summary.Targets))
-	for index, provider := range summary.Targets {
-		if !ProviderValid(provider) {
-			return nil, fmt.Errorf("target %d: invalid provider %q", index, provider)
-		}
-		if _, exists := expected[provider]; exists {
-			return nil, fmt.Errorf("target %d: duplicate provider %q", index, provider)
-		}
-		expected[provider] = struct{}{}
-	}
-	return expected, nil
-}
-
-func (command Command) expectedProviders() map[Provider]struct{} {
-	switch command {
-	case CommandCampus:
-		return map[Provider]struct{}{ProviderCampus: {}}
-	case CommandMLab:
-		return map[Provider]struct{}{ProviderMLab: {}}
-	case CommandEdge:
-		return map[Provider]struct{}{ProviderNJUEdgeIPv4: {}}
-	case CommandDomestic:
-		return map[Provider]struct{}{ProviderCERNETIPv4: {}, ProviderQLUIPv4: {}, ProviderTongjiIPv4: {}}
-	case CommandRun:
-		return map[Provider]struct{}{ProviderCampus: {}, ProviderMLab: {}}
-	case CommandApple:
-		return map[Provider]struct{}{ProviderApple: {}}
-	case CommandOokla:
-		return map[Provider]struct{}{ProviderOokla: {}}
-	default:
-		return nil
-	}
-}
-
 func ProviderValid(provider Provider) bool {
 	switch provider {
-	case ProviderCampus,
-		ProviderMLab,
+	case ProviderMLab,
 		ProviderNJUCampusIPv4,
 		ProviderNJUCampusIPv6,
 		ProviderNJUEdgeIPv4,
@@ -264,8 +227,7 @@ func ProviderValid(provider Provider) bool {
 
 func ProviderMethod(provider Provider) string {
 	switch provider {
-	case ProviderCampus,
-		ProviderNJUCampusIPv4,
+	case ProviderNJUCampusIPv4,
 		ProviderNJUCampusIPv6,
 		ProviderNJUEdgeIPv4,
 		ProviderNJUEdgeIPv6,

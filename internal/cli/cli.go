@@ -7,7 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
@@ -407,42 +410,15 @@ func formatCommand(command []string) string {
 	return strings.Join(parts, " ")
 }
 
+// resolvePlan turns a command and its flags into an ordered target plan.  The
+// station registry owns which stations a command runs and which it accepts; the
+// CLI only supplies the explicit --targets override and the address family.
 func resolvePlan(command model.Command, options commandOptions) (target.Plan, error) {
-	family := target.Family(options.family)
-	ids := []string{}
-	switch command {
-	case model.CommandRun:
-		ids = []string{"nju-campus", "mlab", "apple"}
-	case model.CommandCampus:
-		ids = []string{"nju-campus"}
-	case model.CommandEdge:
-		ids = []string{"nju-edge"}
-	case model.CommandDomestic:
-		ids = []string{"tongji", "qlu"}
-	case model.CommandMLab:
-		ids = []string{"mlab"}
-	case model.CommandApple:
-		ids = []string{"apple"}
-	case model.CommandOokla:
-		ids = []string{"ookla"}
-	default:
-		return target.Plan{}, fmt.Errorf("unsupported measurement command %q", command)
-	}
+	var ids []string
 	if strings.TrimSpace(options.targets) != "" {
 		ids = splitCommaList(options.targets)
 	}
-	if command == model.CommandDomestic {
-		if family == target.FamilyIPv6 {
-			return target.Plan{}, errors.New("domestic stations currently support IPv4 only")
-		}
-		allowed := map[string]struct{}{"cernet": {}, "qlu": {}, "tongji": {}}
-		for _, id := range ids {
-			if _, ok := allowed[id]; !ok {
-				return target.Plan{}, fmt.Errorf("target %q is not a domestic station", id)
-			}
-		}
-	}
-	return target.NewPlan(ids, family)
+	return target.PlanForCommand(command, ids, target.Family(options.family))
 }
 
 func splitCommaList(value string) []string {
@@ -492,17 +468,68 @@ func (app *App) executeStations(ctx context.Context, jsonMode bool) int {
 	return 0
 }
 
-func (app *App) executeHistory(limit int, jsonMode bool) int {
+// readHistory lists saved runs newest first, skipping every file this build
+// cannot read instead of failing the whole command.  History accumulates across
+// releases and is never pruned automatically, so a summary written by an older,
+// incompatible schema version must not hide every other run.  Unreadable files
+// are left untouched on disk and reported once on stderr, which keeps `--json`
+// stdout a single document.
+func (app *App) readHistory(limit int) ([]model.RunSummary, []string, error) {
+	if app.History == nil || app.History.HistoryDir == "" {
+		return nil, nil, errors.New("history store is not configured")
+	}
 	if limit < 0 {
-		return app.fail(jsonMode, "invalid_arguments", "history limit must be non-negative", 1)
+		return nil, nil, errors.New("history limit must be non-negative")
 	}
-	if app.History == nil {
-		return app.fail(jsonMode, "storage_error", "history store is not configured", 1)
+	entries, err := os.ReadDir(app.History.HistoryDir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return []model.RunSummary{}, nil, nil
 	}
-	summaries, err := app.History.List(limit)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read history directory: %w", err)
+	}
+	summaries := make([]model.RunSummary, 0, len(entries))
+	unreadable := make([]string, 0)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		summary, err := app.History.Load(strings.TrimSuffix(entry.Name(), ".json"))
+		if err != nil {
+			unreadable = append(unreadable, entry.Name())
+			continue
+		}
+		summaries = append(summaries, summary)
+	}
+	sort.Slice(summaries, func(first, second int) bool {
+		return summaries[first].StartedAt.After(summaries[second].StartedAt)
+	})
+	if limit > 0 && len(summaries) > limit {
+		summaries = summaries[:limit]
+	}
+	return summaries, unreadable, nil
+}
+
+func (app *App) reportUnreadableHistory(unreadable []string) {
+	if len(unreadable) == 0 {
+		return
+	}
+	shown := unreadable
+	suffix := ""
+	if len(shown) > 3 {
+		shown = shown[:3]
+		suffix = fmt.Sprintf(" and %d more", len(unreadable)-3)
+	}
+	fmt.Fprintf(app.Err, "soundprobe: skipped %d unreadable history file(s), schema version %d is required: %s%s\n",
+		len(unreadable), model.SchemaVersion, strings.Join(shown, ", "), suffix)
+}
+
+func (app *App) executeHistory(limit int, jsonMode bool) int {
+	summaries, unreadable, err := app.readHistory(limit)
 	if err != nil {
 		return app.fail(jsonMode, "storage_error", err.Error(), 1)
 	}
+	app.reportUnreadableHistory(unreadable)
 	if jsonMode {
 		if err := json.NewEncoder(app.Out).Encode(summaries); err != nil {
 			return 1
@@ -514,13 +541,11 @@ func (app *App) executeHistory(limit int, jsonMode bool) int {
 }
 
 func (app *App) executeLast(jsonMode bool) int {
-	if app.History == nil {
-		return app.fail(jsonMode, "storage_error", "history store is not configured", 1)
-	}
-	summaries, err := app.History.List(1)
+	summaries, unreadable, err := app.readHistory(1)
 	if err != nil {
 		return app.fail(jsonMode, "storage_error", err.Error(), 1)
 	}
+	app.reportUnreadableHistory(unreadable)
 	if len(summaries) == 0 {
 		return app.fail(jsonMode, "no_history", "no saved runs", 1)
 	}
@@ -556,13 +581,11 @@ func (app *App) executeExport(format, output string, jsonMode bool) int {
 	if (format != "jsonl" && format != "csv") || output == "" {
 		return app.fail(jsonMode, "invalid_arguments", "export requires --format jsonl|csv and --output PATH", 1)
 	}
-	if app.History == nil {
-		return app.fail(jsonMode, "storage_error", "history store is not configured", 1)
-	}
-	summaries, err := app.History.List(0)
+	summaries, unreadable, err := app.readHistory(0)
 	if err != nil {
 		return app.fail(jsonMode, "storage_error", err.Error(), 1)
 	}
+	app.reportUnreadableHistory(unreadable)
 	if err := exporter.Write(output, format, summaries); err != nil {
 		return app.fail(jsonMode, "export_error", err.Error(), 1)
 	}
@@ -587,7 +610,7 @@ func (app *App) executeDoctor(ctx context.Context, jsonMode bool) int {
 		command  model.Command
 		provider model.Provider
 	}{
-		{name: "campus", command: model.CommandCampus, provider: model.ProviderCampus},
+		{name: "campus", command: model.CommandCampus, provider: model.ProviderNJUCampusIPv4},
 		{name: "mlab", command: model.CommandMLab, provider: model.ProviderMLab},
 	} {
 		err := preflight.Preflight(ctx, provider.Request{Command: check.command, Targets: []model.Provider{check.provider}})

@@ -22,10 +22,11 @@ func (provider *fakeMeasurementProvider) Measure(context.Context, Request) (mode
 }
 
 func TestSummaryRunnerBuildsCampusSummary(t *testing.T) {
-	campus := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderCampus)}
-	runner := testSummaryRunner(campus, nil)
+	campus := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderNJUCampusIPv4)}
+	runner := testSummaryRunner(map[model.Provider]MeasurementProvider{model.ProviderNJUCampusIPv4: campus})
 	summary, err := runner.Run(context.Background(), Request{
 		Command: model.CommandCampus,
+		Targets: []model.Provider{model.ProviderNJUCampusIPv4},
 		Label:   model.Pointer("office"),
 		Note:    model.Pointer("wired"),
 	})
@@ -35,6 +36,9 @@ func TestSummaryRunnerBuildsCampusSummary(t *testing.T) {
 	if summary.Status != model.RunStatusSuccess || len(summary.Measurements) != 1 {
 		t.Fatalf("summary = %#v", summary)
 	}
+	if summary.Measurements[0].Provider != model.ProviderNJUCampusIPv4 {
+		t.Fatalf("provider = %q", summary.Measurements[0].Provider)
+	}
 	if summary.Label == nil || *summary.Label != "office" || summary.Note == nil || *summary.Note != "wired" {
 		t.Fatalf("metadata = %v/%v", summary.Label, summary.Note)
 	}
@@ -43,10 +47,25 @@ func TestSummaryRunnerBuildsCampusSummary(t *testing.T) {
 	}
 }
 
-func TestSummaryRunnerPreflightsRunProviders(t *testing.T) {
-	campus := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderCampus)}
-	runner := testSummaryRunner(campus, nil)
-	_, err := runner.Run(context.Background(), Request{Command: model.CommandRun})
+func TestSummaryRunnerRejectsAPlanWithoutTargets(t *testing.T) {
+	campus := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderNJUCampusIPv4)}
+	runner := testSummaryRunner(map[model.Provider]MeasurementProvider{model.ProviderNJUCampusIPv4: campus})
+	_, err := runner.Run(context.Background(), Request{Command: model.CommandCampus})
+	if err == nil {
+		t.Fatal("Run() accepted a request without an ordered target plan")
+	}
+	if campus.calls != 0 {
+		t.Fatalf("campus calls = %d, want 0", campus.calls)
+	}
+}
+
+func TestSummaryRunnerPreflightsEveryPlannedTarget(t *testing.T) {
+	campus := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderNJUCampusIPv4)}
+	runner := testSummaryRunner(map[model.Provider]MeasurementProvider{model.ProviderNJUCampusIPv4: campus})
+	_, err := runner.Run(context.Background(), Request{
+		Command: model.CommandRun,
+		Targets: []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderMLab},
+	})
 	if !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("error = %v, want ErrUnavailable", err)
 	}
@@ -59,18 +78,24 @@ func TestSummaryRunnerRunsProvidersSequentially(t *testing.T) {
 	order := []string{}
 	campus := measurementProviderFunc(func(context.Context, Request) (model.Measurement, error) {
 		order = append(order, "campus")
-		return successfulMeasurement(model.ProviderCampus), nil
+		return successfulMeasurement(model.ProviderNJUCampusIPv4), nil
 	})
 	mlab := measurementProviderFunc(func(context.Context, Request) (model.Measurement, error) {
 		order = append(order, "mlab")
 		return successfulMeasurement(model.ProviderMLab), nil
 	})
-	runner := testSummaryRunner(campus, mlab)
+	runner := testSummaryRunner(map[model.Provider]MeasurementProvider{
+		model.ProviderNJUCampusIPv4: campus,
+		model.ProviderMLab:          mlab,
+	})
 	runner.Snapshot = func() model.NetworkContext {
 		order = append(order, "snapshot")
 		return model.NetworkContext{OS: "testOS", Architecture: "testArch"}
 	}
-	summary, err := runner.Run(context.Background(), Request{Command: model.CommandRun})
+	summary, err := runner.Run(context.Background(), Request{
+		Command: model.CommandRun,
+		Targets: []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderMLab},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,17 +107,17 @@ func TestSummaryRunnerRunsProvidersSequentially(t *testing.T) {
 	}
 }
 
-func TestSummaryRunnerIncludesConfiguredAppleInDefaultRun(t *testing.T) {
-	campus := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderCampus)}
-	mlab := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderMLab)}
-	apple := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderApple)}
-	runner := testSummaryRunner(campus, mlab)
-	runner.Apple = apple
-	summary, err := runner.Run(context.Background(), Request{Command: model.CommandRun})
+func TestSummaryRunnerKeepsPlannedTargetOrder(t *testing.T) {
+	want := []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderMLab, model.ProviderApple}
+	providers := map[model.Provider]MeasurementProvider{}
+	for _, kind := range want {
+		providers[kind] = &fakeMeasurementProvider{measurement: successfulMeasurement(kind)}
+	}
+	runner := testSummaryRunner(providers)
+	summary, err := runner.Run(context.Background(), Request{Command: model.CommandRun, Targets: want})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []model.Provider{model.ProviderCampus, model.ProviderMLab, model.ProviderApple}
 	if len(summary.Targets) != len(want) || len(summary.Measurements) != len(want) {
 		t.Fatalf("summary = %#v", summary)
 	}
@@ -104,22 +129,23 @@ func TestSummaryRunnerIncludesConfiguredAppleInDefaultRun(t *testing.T) {
 }
 
 func TestSummaryRunnerPrepareDropsUnavailableOptionalProvider(t *testing.T) {
-	campus := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderCampus)}
-	mlab := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderMLab)}
 	apple := &preflightMeasurementProvider{
 		fakeMeasurementProvider: fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderApple)},
 		preflightErr:            fmt.Errorf("%w: Apple networkQuality is available on macOS only", ErrUnavailable),
 	}
-	runner := testSummaryRunner(campus, mlab)
-	runner.Apple = apple
+	runner := testSummaryRunner(map[model.Provider]MeasurementProvider{
+		model.ProviderNJUCampusIPv4: &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderNJUCampusIPv4)},
+		model.ProviderMLab:          &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderMLab)},
+		model.ProviderApple:         apple,
+	})
 	prepared, err := runner.Prepare(context.Background(), Request{
 		Command: model.CommandRun,
-		Targets: []model.Provider{model.ProviderCampus, model.ProviderMLab, model.ProviderApple},
+		Targets: []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderMLab, model.ProviderApple},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []model.Provider{model.ProviderCampus, model.ProviderMLab}
+	want := []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderMLab}
 	if fmt.Sprint(prepared.Targets) != fmt.Sprint(want) {
 		t.Fatalf("prepared targets = %#v, want %#v", prepared.Targets, want)
 	}
@@ -130,8 +156,7 @@ func TestSummaryRunnerPrepareKeepsExplicitOptionalFailureClosed(t *testing.T) {
 		fakeMeasurementProvider: fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderOokla)},
 		preflightErr:            fmt.Errorf("%w: official Ookla CLI was not found", ErrUnavailable),
 	}
-	runner := testSummaryRunner(nil, nil)
-	runner.Ookla = ookla
+	runner := testSummaryRunner(map[model.Provider]MeasurementProvider{model.ProviderOokla: ookla})
 	_, err := runner.Prepare(context.Background(), Request{
 		Command: model.CommandOokla,
 		Targets: []model.Provider{model.ProviderOokla},
@@ -143,7 +168,7 @@ func TestSummaryRunnerPrepareKeepsExplicitOptionalFailureClosed(t *testing.T) {
 
 func TestSummaryRunnerSkipsNextProviderAfterCancellation(t *testing.T) {
 	campus := &fakeMeasurementProvider{measurement: model.Measurement{
-		Provider: model.ProviderCampus,
+		Provider: model.ProviderNJUCampusIPv4,
 		Method:   model.MethodLibreSpeedThreeStream,
 		Status:   model.ProviderStatusCancelled,
 		Failure: &model.Failure{
@@ -153,8 +178,14 @@ func TestSummaryRunnerSkipsNextProviderAfterCancellation(t *testing.T) {
 		},
 	}}
 	mlab := &fakeMeasurementProvider{measurement: successfulMeasurement(model.ProviderMLab)}
-	runner := testSummaryRunner(campus, mlab)
-	summary, err := runner.Run(context.Background(), Request{Command: model.CommandRun})
+	runner := testSummaryRunner(map[model.Provider]MeasurementProvider{
+		model.ProviderNJUCampusIPv4: campus,
+		model.ProviderMLab:          mlab,
+	})
+	summary, err := runner.Run(context.Background(), Request{
+		Command: model.CommandRun,
+		Targets: []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderMLab},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,12 +212,11 @@ func (provider *preflightMeasurementProvider) Preflight(context.Context, Request
 	return provider.preflightErr
 }
 
-func testSummaryRunner(campus, mlab MeasurementProvider) SummaryRunner {
+func testSummaryRunner(providers map[model.Provider]MeasurementProvider) SummaryRunner {
 	now := time.Date(2026, 7, 21, 8, 0, 0, 0, time.UTC)
 	return SummaryRunner{
 		ToolVersion: "test",
-		Campus:      campus,
-		MLab:        mlab,
+		Providers:   providers,
 		Now: func() time.Time {
 			now = now.Add(time.Second)
 			return now
@@ -201,19 +231,9 @@ func testSummaryRunner(campus, mlab MeasurementProvider) SummaryRunner {
 }
 
 func successfulMeasurement(provider model.Provider) model.Measurement {
-	method := model.MethodLibreSpeedThreeStream
-	if provider == model.ProviderMLab {
-		method = model.MethodNDT7SingleStream
-	}
-	if provider == model.ProviderApple {
-		method = model.MethodAppleNetworkQuality
-	}
-	if provider == model.ProviderOokla {
-		method = model.MethodOoklaSpeedtest
-	}
 	return model.Measurement{
 		Provider:     provider,
-		Method:       method,
+		Method:       model.ProviderMethod(provider),
 		Status:       model.ProviderStatusSuccess,
 		DownloadMbps: model.Pointer(100.0),
 		UploadMbps:   model.Pointer(50.0),

@@ -24,7 +24,8 @@ Homebrew template checks, and deterministic release artifact tests. It covers:
 - official Ookla JSON/server metadata, version identity, interface binding, and
   rejection of the Python `speedtest-cli`;
 - success, partial, failure, timeout, malformed output, and cancellation;
-- legacy schema-v1 history without an explicit `targets` field;
+- schema-v1 history being rejected, skipped and reported without breaking
+  `history`, `last` or `export`;
 - normalized one-measurement-per-row CSV export;
 - Bubble Tea inline rendering and cursor restoration;
 - JSON and redirected output without ANSI or provider event leakage;
@@ -278,8 +279,11 @@ Read it back:
 ./bin/soundprobe show RUN_ID --json
 ```
 
-Verify `targets` matches measurement order. Existing 0.1 history files without
-`targets` must still load.
+Verify `targets` matches measurement order. A `history/v1` directory left by
+soundprobe 0.1 must be ignored entirely: history reads as empty on a fresh
+upgrade, those files stay on disk, and no warning is printed about them. A file
+inside `history/v2` that cannot be read must be skipped with a note on stderr
+while every readable run is still listed.
 
 Export:
 
@@ -294,8 +298,8 @@ five targets produces five data rows.
 Permission checks:
 
 ```sh
-stat -f '%Sp %N' "$HOME/Library/Application Support/soundprobe/history/v1"
-stat -f '%Sp %N' "$HOME/Library/Application Support/soundprobe/history/v1/"*.json
+stat -f '%Sp %N' "$HOME/Library/Application Support/soundprobe/history/v2"
+stat -f '%Sp %N' "$HOME/Library/Application Support/soundprobe/history/v2/"*.json
 ```
 
 Expected:

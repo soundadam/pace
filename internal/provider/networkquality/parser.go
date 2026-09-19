@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/soundprobe/internal/provider"
 )
 
 type report struct {
@@ -99,30 +100,23 @@ func parseResult(data []byte, durationMS int64) (model.Measurement, error) {
 	return measurement, nil
 }
 
-func failedMeasurement(durationMS int64, code, message string) model.Measurement {
-	return model.Measurement{
+// attempt describes a networkQuality run for the shared failure constructors.
+// The helper picks its own server and stream count, so neither is recorded.
+func attempt(durationMS int64) provider.Attempt {
+	return provider.Attempt{
 		Provider:      model.ProviderApple,
-		Method:        model.MethodAppleNetworkQuality,
-		Status:        model.ProviderStatusFailed,
-		ServerName:    model.Pointer("Apple networkQuality"),
-		DownloadMbps:  model.Pointer(0.0),
-		UploadMbps:    model.Pointer(0.0),
-		DurationMS:    model.Pointer(durationMS),
-		HelperVersion: model.Pointer("system"),
-		Failure:       &model.Failure{Stage: model.FailureStageHelper, Code: code, Message: message},
+		ServerName:    "Apple networkQuality",
+		HelperVersion: "system",
+		DurationMS:    durationMS,
 	}
 }
 
+func failedMeasurement(durationMS int64, stage model.FailureStage, code, message string) model.Measurement {
+	return provider.FailedMeasurement(attempt(durationMS), stage, code, message)
+}
+
 func cancelledMeasurement(durationMS int64) model.Measurement {
-	return model.Measurement{
-		Provider:      model.ProviderApple,
-		Method:        model.MethodAppleNetworkQuality,
-		Status:        model.ProviderStatusCancelled,
-		ServerName:    model.Pointer("Apple networkQuality"),
-		DurationMS:    model.Pointer(durationMS),
-		HelperVersion: model.Pointer("system"),
-		Failure:       &model.Failure{Stage: model.FailureStageCancelled, Code: "cancelled", Message: "Apple networkQuality was cancelled"},
-	}
+	return provider.CancelledMeasurement(attempt(durationMS), "Apple networkQuality was cancelled")
 }
 
 func zeroIfNil(value *float64) *float64 {

@@ -60,18 +60,11 @@ func main() {
 			})
 		}
 	}
-	mlabRunner := mlab.New(helperResolver)
-	providers[model.ProviderMLab] = mlabRunner
-	appleRunner := networkquality.New()
-	ooklaRunner := ookla.New()
-	providers[model.ProviderApple] = appleRunner
-	providers[model.ProviderOokla] = ooklaRunner
+	providers[model.ProviderMLab] = mlab.New(helperResolver)
+	providers[model.ProviderApple] = networkquality.New()
+	providers[model.ProviderOokla] = ookla.New()
 	measurementRunner := provider.SummaryRunner{
 		ToolVersion: buildinfo.Version,
-		Campus:      campus.New(helperResolver),
-		MLab:        mlabRunner,
-		Apple:       appleRunner,
-		Ookla:       ooklaRunner,
 		Providers:   providers,
 		Snapshot:    network.Snapshot,
 	}

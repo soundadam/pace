@@ -78,7 +78,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 			return cancelledMeasurement(durationMS), nil
 		}
 		if errors.Is(measurementCtx.Err(), context.DeadlineExceeded) {
-			return timeoutMeasurement(durationMS), nil
+			return failedMeasurement(durationMS, model.FailureStageTimeout, "timeout", "Apple networkQuality timed out"), nil
 		}
 		if stdout.Len() > 0 {
 			if measurement, parseErr := parseResult(stdout.Bytes(), durationMS); parseErr == nil {
@@ -89,7 +89,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 		if message == "" {
 			message = "Apple networkQuality exited without a result"
 		}
-		return failedMeasurement(durationMS, "helper_exit", message), nil
+		return failedMeasurement(durationMS, model.FailureStageHelper, "helper_exit", message), nil
 	}
 
 	durationMS := provider.ElapsedMS(startedAt, runner.Now())
@@ -102,7 +102,7 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 		if sanitized := provider.SanitizeMessage(stderr.String(), provider.MessageLimit); sanitized != "" {
 			message = sanitized
 		}
-		return failedMeasurement(durationMS, "invalid_output", message), nil
+		return failedMeasurement(durationMS, model.FailureStageHelper, "invalid_output", message), nil
 	}
 	return measurement, nil
 }
@@ -135,10 +135,4 @@ func (runner *Runner) setDefaults() {
 	if runner.Now == nil {
 		runner.Now = time.Now
 	}
-}
-
-func timeoutMeasurement(durationMS int64) model.Measurement {
-	measurement := failedMeasurement(durationMS, "timeout", "Apple networkQuality timed out")
-	measurement.Failure.Stage = model.FailureStageTimeout
-	return measurement
 }

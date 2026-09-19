@@ -96,10 +96,10 @@ func (runner *Runner) Measure(ctx context.Context, request provider.Request) (mo
 	durationMS := provider.ElapsedMS(startedAt, runner.Now())
 
 	if errors.Is(measurementCtx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
-		return cancelledMeasurement(helperVersion, durationMS), nil
+		return provider.CancelledMeasurement(attempt(helperVersion, durationMS), "M-Lab measurement was cancelled"), nil
 	}
 	if errors.Is(measurementCtx.Err(), context.DeadlineExceeded) {
-		return failedMeasurement(helperVersion, durationMS, model.FailureStageTimeout, "timeout", "M-Lab measurement timed out"), nil
+		return provider.FailedMeasurement(attempt(helperVersion, durationMS), model.FailureStageTimeout, "timeout", "M-Lab measurement timed out"), nil
 	}
 	if scanErr != nil {
 		return model.Measurement{}, fmt.Errorf("read ndt7 helper output: %w", scanErr)
@@ -155,41 +155,13 @@ func (runner *Runner) setDefaults() {
 	}
 }
 
-func failedMeasurement(version string, durationMS int64, stage model.FailureStage, code, message string) model.Measurement {
-	zero := 0.0
-	concurrency := 1
-	return model.Measurement{
+// attempt describes an ndt7 run for the shared failure constructors.  M-Lab
+// always uses a single stream.
+func attempt(version string, durationMS int64) provider.Attempt {
+	return provider.Attempt{
 		Provider:      model.ProviderMLab,
-		Method:        model.MethodNDT7SingleStream,
-		Status:        model.ProviderStatusFailed,
-		DownloadMbps:  model.Pointer(zero),
-		UploadMbps:    model.Pointer(zero),
-		DownloadBytes: model.Pointer(int64(0)),
-		UploadBytes:   model.Pointer(int64(0)),
-		DurationMS:    model.Pointer(durationMS),
-		Concurrency:   model.Pointer(concurrency),
-		HelperVersion: model.Pointer(version),
-		Failure: &model.Failure{
-			Stage:   stage,
-			Code:    code,
-			Message: message,
-		},
-	}
-}
-
-func cancelledMeasurement(version string, durationMS int64) model.Measurement {
-	concurrency := 1
-	return model.Measurement{
-		Provider:      model.ProviderMLab,
-		Method:        model.MethodNDT7SingleStream,
-		Status:        model.ProviderStatusCancelled,
-		DurationMS:    model.Pointer(durationMS),
-		Concurrency:   model.Pointer(concurrency),
-		HelperVersion: model.Pointer(version),
-		Failure: &model.Failure{
-			Stage:   model.FailureStageCancelled,
-			Code:    "cancelled",
-			Message: "M-Lab measurement was cancelled",
-		},
+		Concurrency:   1,
+		HelperVersion: version,
+		DurationMS:    durationMS,
 	}
 }

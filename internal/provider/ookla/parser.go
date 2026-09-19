@@ -146,28 +146,22 @@ func parseResult(data []byte, helperVersion string, durationMS int64) (model.Mea
 	return measurement, nil
 }
 
-func failedMeasurement(helperVersion string, durationMS int64, stage model.FailureStage, code, message string) model.Measurement {
-	return model.Measurement{
+// attempt describes a Speedtest CLI run for the shared failure constructors.
+// The helper selects its own server and stream count, so neither is recorded.
+func attempt(helperVersion string, durationMS int64) provider.Attempt {
+	return provider.Attempt{
 		Provider:      model.ProviderOokla,
-		Method:        model.MethodOoklaSpeedtest,
-		Status:        model.ProviderStatusFailed,
-		DownloadMbps:  model.Pointer(0.0),
-		UploadMbps:    model.Pointer(0.0),
-		DurationMS:    model.Pointer(durationMS),
-		HelperVersion: model.Pointer(helperVersion),
-		Failure:       &model.Failure{Stage: stage, Code: code, Message: message},
+		HelperVersion: helperVersion,
+		DurationMS:    durationMS,
 	}
 }
 
+func failedMeasurement(helperVersion string, durationMS int64, stage model.FailureStage, code, message string) model.Measurement {
+	return provider.FailedMeasurement(attempt(helperVersion, durationMS), stage, code, message)
+}
+
 func cancelledMeasurement(helperVersion string, durationMS int64) model.Measurement {
-	return model.Measurement{
-		Provider:      model.ProviderOokla,
-		Method:        model.MethodOoklaSpeedtest,
-		Status:        model.ProviderStatusCancelled,
-		DurationMS:    model.Pointer(durationMS),
-		HelperVersion: model.Pointer(helperVersion),
-		Failure:       &model.Failure{Stage: model.FailureStageCancelled, Code: "cancelled", Message: "Ookla Speedtest was cancelled"},
-	}
+	return provider.CancelledMeasurement(attempt(helperVersion, durationMS), "Ookla Speedtest was cancelled")
 }
 
 func zeroIfNil(value *float64) *float64 {

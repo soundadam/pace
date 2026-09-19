@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/soundadam/soundprobe/internal/configdir"
 	"github.com/soundadam/soundprobe/internal/target"
 )
 
@@ -32,11 +33,7 @@ type Store struct {
 func New(path string) *Store { return &Store{Path: path} }
 
 func DefaultPath() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("resolve user config directory: %w", err)
-	}
-	return filepath.Join(configDir, "soundprobe", "preferences.json"), nil
+	return configdir.Path("preferences.json")
 }
 
 func DefaultConfig() Config {

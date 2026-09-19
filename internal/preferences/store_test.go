@@ -67,6 +67,26 @@ func TestLoadReportsMissingFileAsNotConfigured(t *testing.T) {
 	}
 }
 
+func TestDefaultPathIsUnderConfigDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(configDir, "soundprobe", "preferences.json")
+
+	path, err := DefaultPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != want {
+		t.Fatalf("DefaultPath() = %q, want %q", path, want)
+	}
+}
+
 func TestConfigRejectsWebOnlyStation(t *testing.T) {
 	config := DefaultConfig()
 	config.DailyStations = []string{"nju-edge"}

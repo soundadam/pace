@@ -248,13 +248,6 @@ func (accumulator *accumulator) measurement(helperVersion string, durationMS int
 }
 
 func (accumulator *accumulator) failedMeasurement(helperVersion string, durationMS int64, download, upload *float64) model.Measurement {
-	zero := 0.0
-	if download == nil {
-		download = model.Pointer(zero)
-	}
-	if upload == nil {
-		upload = model.Pointer(zero)
-	}
 	failure := ndtFailure{message: "M-Lab result was incomplete"}
 	if len(accumulator.failures) > 0 {
 		failure = accumulator.failures[0]
@@ -264,24 +257,17 @@ func (accumulator *accumulator) failedMeasurement(helperVersion string, duration
 		failure.test = "upload"
 	}
 	stage, code := classifyFailure(failure.test, failure.message)
-	concurrency := 1
-	measurement := model.Measurement{
-		Provider:      model.ProviderMLab,
-		Method:        model.MethodNDT7SingleStream,
-		Status:        model.ProviderStatusFailed,
-		DownloadMbps:  download,
-		UploadMbps:    upload,
-		DownloadBytes: model.Pointer(accumulator.downloadBytes),
-		UploadBytes:   model.Pointer(accumulator.uploadBytes),
-		DurationMS:    model.Pointer(durationMS),
-		Concurrency:   model.Pointer(concurrency),
-		HelperVersion: model.Pointer(helperVersion),
-		Failure: &model.Failure{
-			Stage:   stage,
-			Code:    code,
-			Message: failure.message,
-		},
+	measurement := provider.FailedMeasurement(attempt(helperVersion, durationMS), stage, code, failure.message)
+	// The shared constructor reports zeros; replace them with whatever the run
+	// actually transferred before it failed.
+	if download != nil {
+		measurement.DownloadMbps = download
 	}
+	if upload != nil {
+		measurement.UploadMbps = upload
+	}
+	measurement.DownloadBytes = model.Pointer(accumulator.downloadBytes)
+	measurement.UploadBytes = model.Pointer(accumulator.uploadBytes)
 	if accumulator.summary != nil {
 		if accumulator.summary.ServerFQDN != "" {
 			measurement.ServerName = model.Pointer(accumulator.summary.ServerFQDN)

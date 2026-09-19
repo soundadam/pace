@@ -46,19 +46,26 @@ nju-campus-ipv6
 nju-edge-ipv4
 nju-edge-ipv6
 mlab
-apple
-ookla
+apple-networkquality
+ookla-speedtest
 cernet-ipv4
 qlu-ipv4
 tongji-ipv4
 ```
 
-The legacy provider ID `campus` remains valid only so schema-v1 history written
-by soundprobe 0.1 can still be read. New measurements use explicit IDs.
+One station and family has exactly one provider ID everywhere. `campus`,
+`soundprobe run`, and `--targets nju-campus` all record the same NJU campus
+measurement as `nju-campus-ipv4` or `nju-campus-ipv6`. There is no
+command-shaped provider ID: the ID names the thing measured, never the command
+that asked for it.
 
-Every new run summary includes an ordered `targets` array. The number and order
-of measurement objects must match the requested targets. Duplicate targets are
-rejected or deduplicated before execution, not executed twice accidentally.
+Every run summary includes an ordered `targets` array, and it is required. The
+array is the run's plan of record: it is resolved once, with the requested
+address family already applied, and the measurement objects must match it in
+both number and order. Duplicate targets are rejected or deduplicated before
+execution, not executed twice accidentally. Validation compares measurements
+against the recorded plan only; which stations a command may run is decided by
+the station registry before the run starts.
 
 ## 3. LibreSpeed target behavior
 
@@ -342,16 +349,23 @@ ASN lookup.
 Store summaries under the current user's platform configuration directory:
 
 ```text
-macOS:   ~/Library/Application Support/soundprobe/history/v1/<run-id>.json
-Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v1/<run-id>.json
-Windows: %AppData%\\soundprobe\\history\\v1\\<run-id>.json
+macOS:   ~/Library/Application Support/soundprobe/history/v2/<run-id>.json
+Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v2/<run-id>.json
+Windows: %AppData%\\soundprobe\\history\\v2\\<run-id>.json
 ```
 
 Directories are `0700`; files are `0600`. Use same-directory temporary files,
 fsync, and atomic rename. Never prune history automatically.
 
-Schema version remains 1. Existing 0.1 history without a `targets` field must
-remain readable. New summaries include the ordered target IDs.
+Schema version is 2. Version 2 removed the ambiguous `campus` provider ID and
+made the ordered `targets` array mandatory, so schema-v1 history written by
+soundprobe 0.1 is not readable by this build. There is no migration, and the
+`history/v1` directory is no longer read: those files stay on disk untouched,
+exactly as the pre-rename `njuprobe` directory does. A file inside `history/v2`
+that this build cannot read is skipped and reported on standard error;
+`history`, `last` and `export` still serve every readable run. `show RUN-ID`
+fails when that specific run is unreadable, because there is nothing to fall
+back to.
 
 JSONL export writes one complete summary per line. CSV export writes one row per
 measurement, repeating run metadata. This normalized form preserves arbitrary
@@ -393,7 +407,10 @@ Automated tests use mock helpers and local HTTP fixtures. They cover:
 - Ookla official version validation, dynamic server metadata, and Python
   `speedtest-cli` rejection;
 - multi-target success, partial, failure, cancellation, and skipped results;
-- schema-v1 legacy history compatibility;
+- schema-v2 validation of the ordered target plan, rejection of schema-v1 and
+  of the retired `campus` provider ID, and graceful skipping of unreadable
+  history files by `history`, `last` and `export`;
+- one shared failed/cancelled measurement shape across every provider;
 - normalized CSV and JSONL export;
 - inline terminal rendering, cursor restoration, and no ANSI in redirected/JSON
   output;

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/soundprobe/internal/provider"
 )
 
 type Family string
@@ -24,13 +25,17 @@ const (
 )
 
 type Station struct {
-	ID                string
-	Label             string
-	Description       string
-	UseCase           string
-	IPv4              *Spec
-	IPv6              *Spec
-	MLab              bool
+	ID          string
+	Label       string
+	Description string
+	UseCase     string
+	IPv4        *Spec
+	IPv6        *Spec
+	MLab        bool
+	// Domestic marks a station that belongs to the `domestic` command's
+	// regional reference set.  The command's accepted station list is derived
+	// from this flag, so adding a domestic station is a registry edit only.
+	Domestic          bool
 	AutoProvider      model.Provider
 	DailyEligible     bool
 	TerminalSupported bool
@@ -119,6 +124,7 @@ var stations = []Station{
 	},
 	{
 		ID:                "tongji",
+		Domestic:          true,
 		Label:             "Tongji",
 		Description:       "Tongji University · Shanghai",
 		UseCase:           "Regional reference for Shanghai and the Yangtze River Delta",
@@ -128,6 +134,7 @@ var stations = []Station{
 	},
 	{
 		ID:                "qlu",
+		Domestic:          true,
 		Label:             "QLU",
 		Description:       "Qilu University of Technology · Jinan, Shandong",
 		UseCase:           "Shandong regional reference; results vary with route and server load",
@@ -137,6 +144,7 @@ var stations = []Station{
 	},
 	{
 		ID:                "cernet",
+		Domestic:          true,
 		Label:             "CERNET",
 		Description:       "CERNET public LibreSpeed station",
 		UseCase:           "Education-network reference; explicit --targets only, availability can vary",
@@ -155,21 +163,102 @@ var stations = []Station{
 	},
 }
 
+// commandStations is the only place a measurement command is turned into
+// stations.  The IDs are resolved against the registry at init, and the address
+// family is applied by Expand, so a command never names a provider ID directly
+// and a station is never listed twice across the codebase.
+var commandStations = map[model.Command][]string{
+	model.CommandRun:    {"nju-campus", "mlab", "apple"},
+	model.CommandCampus: {"nju-campus"},
+	model.CommandEdge:   {"nju-edge"},
+	model.CommandMLab:   {"mlab"},
+	model.CommandApple:  {"apple"},
+	model.CommandOokla:  {"ookla"},
+}
+
 var stationByID map[string]Station
 var specByProvider map[model.Provider]Spec
+var stationIDByProvider map[model.Provider]string
 
 func init() {
 	stationByID = make(map[string]Station, len(stations))
 	specByProvider = make(map[model.Provider]Spec, len(stations)*2)
+	stationIDByProvider = make(map[model.Provider]string, len(stations)*2)
+	domestic := make([]string, 0, len(stations))
 	for _, station := range stations {
 		stationByID[station.ID] = station
 		if station.IPv4 != nil {
 			specByProvider[station.IPv4.Provider] = *station.IPv4
+			stationIDByProvider[station.IPv4.Provider] = station.ID
 		}
 		if station.IPv6 != nil {
 			specByProvider[station.IPv6.Provider] = *station.IPv6
+			stationIDByProvider[station.IPv6.Provider] = station.ID
+		}
+		if station.MLab {
+			stationIDByProvider[model.ProviderMLab] = station.ID
+		}
+		if station.AutoProvider != "" {
+			stationIDByProvider[station.AutoProvider] = station.ID
+		}
+		if station.Domestic {
+			domestic = append(domestic, station.ID)
 		}
 	}
+	// `domestic` runs the regional stations that are part of the daily set;
+	// the rest stay reachable through an explicit --targets list.
+	defaults := make([]string, 0, len(domestic))
+	for _, id := range domestic {
+		if stationByID[id].DailyEligible {
+			defaults = append(defaults, id)
+		}
+	}
+	commandStations[model.CommandDomestic] = defaults
+
+	for command, ids := range commandStations {
+		for _, id := range ids {
+			if _, ok := stationByID[id]; !ok {
+				panic(fmt.Sprintf("target: command %q names unknown station %q", command, id))
+			}
+		}
+	}
+}
+
+// CommandStations returns the default station IDs a measurement command runs
+// when the caller does not pass an explicit target list.
+func CommandStations(command model.Command) ([]string, bool) {
+	ids, ok := commandStations[command]
+	if !ok {
+		return nil, false
+	}
+	result := make([]string, len(ids))
+	copy(result, ids)
+	return result, true
+}
+
+// PlanForCommand resolves a measurement command into an ordered, family-applied
+// plan.  Passing station IDs overrides the command's default set; the command
+// still decides which stations are acceptable.
+func PlanForCommand(command model.Command, ids []string, family Family) (Plan, error) {
+	defaults, ok := CommandStations(command)
+	if !ok {
+		return Plan{}, fmt.Errorf("unsupported measurement command %q", command)
+	}
+	if len(ids) == 0 {
+		ids = defaults
+	}
+	if command == model.CommandDomestic {
+		if family == FamilyIPv6 {
+			return Plan{}, errors.New("domestic stations currently support IPv4 only")
+		}
+		for _, id := range ids {
+			station, ok := StationByID(id)
+			if !ok || !station.Domestic {
+				return Plan{}, fmt.Errorf("target %q is not a domestic station", id)
+			}
+		}
+	}
+	return NewPlan(ids, family)
 }
 
 func Stations() []Station {
@@ -205,9 +294,6 @@ func Label(provider model.Provider) string {
 	}
 	if provider == model.ProviderOokla {
 		return "Ookla Speedtest"
-	}
-	if provider == model.ProviderCampus {
-		return "NJU Campus · IPv4"
 	}
 	if spec, ok := SpecFor(provider); ok {
 		return spec.Label
@@ -287,16 +373,7 @@ func StationIDs(providers []model.Provider) []string {
 	ids := make([]string, 0, len(providers))
 	seen := map[string]struct{}{}
 	for _, provider := range providers {
-		id := ""
-		if provider == model.ProviderMLab {
-			id = "mlab"
-		} else if provider == model.ProviderApple {
-			id = "apple"
-		} else if provider == model.ProviderOokla {
-			id = "ookla"
-		} else if spec, ok := SpecFor(provider); ok {
-			id = spec.StationID
-		}
+		id := stationIDByProvider[provider]
 		if id == "" {
 			continue
 		}
@@ -414,19 +491,11 @@ func probe(parent context.Context, spec Spec, timeout time.Duration) ProbeResult
 	response, err := client.Do(request)
 	latency := float64(time.Since(startedAt).Microseconds()) / 1000
 	if err != nil {
-		return ProbeResult{StationID: spec.StationID, Family: spec.Family, Status: ProbeUnreachable, LatencyMS: &latency, Message: compactError(err)}
+		return ProbeResult{StationID: spec.StationID, Family: spec.Family, Status: ProbeUnreachable, LatencyMS: &latency, Message: provider.SanitizeMessage(err.Error(), provider.MessageLimit)}
 	}
 	_ = response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 400 {
 		return ProbeResult{StationID: spec.StationID, Family: spec.Family, Status: ProbeUnreachable, LatencyMS: &latency, Message: response.Status}
 	}
 	return ProbeResult{StationID: spec.StationID, Family: spec.Family, Status: ProbeReachable, LatencyMS: &latency}
-}
-
-func compactError(err error) string {
-	message := strings.Join(strings.Fields(err.Error()), " ")
-	if len(message) > 160 {
-		message = message[:160]
-	}
-	return message
 }

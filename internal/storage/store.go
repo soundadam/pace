@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/soundadam/soundprobe/internal/configdir"
 	"github.com/soundadam/soundprobe/internal/model"
 )
 
@@ -24,11 +25,7 @@ func New(historyDir string) *Store {
 }
 
 func DefaultHistoryDir() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("resolve user config directory: %w", err)
-	}
-	return filepath.Join(configDir, "soundprobe", "history", "v1"), nil
+	return configdir.Path("history", "v2")
 }
 
 func (store *Store) Save(summary model.RunSummary) error {

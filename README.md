@@ -150,9 +150,9 @@ soundprobe consent status
 永久保存在用户配置目录（目录 `0700`、文件 `0600`、原子写入）：
 
 ```text
-macOS:   ~/Library/Application Support/soundprobe/history/v1/<run-id>.json
-Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v1/<run-id>.json
-Windows: %AppData%\soundprobe\history\v1\<run-id>.json
+macOS:   ~/Library/Application Support/soundprobe/history/v2/<run-id>.json
+Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v2/<run-id>.json
+Windows: %AppData%\soundprobe\history\v2\<run-id>.json
 ```
 
 `export --format jsonl|csv` 导出全部历史。字段表与脚本示例见

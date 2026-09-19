@@ -400,7 +400,7 @@ func TestInteractiveMeasurementUsesProgressRenderer(t *testing.T) {
 	if runner.request.Progress == nil {
 		t.Fatal("progress sink was not passed to runner")
 	}
-	runner.request.Report(provider.ProgressEvent{Provider: model.ProviderCampus, Phase: provider.ProgressMeasuring})
+	runner.request.Report(provider.ProgressEvent{Provider: model.ProviderNJUCampusIPv4, Phase: provider.ProgressMeasuring})
 	if len(progress.events) != 1 || !progress.closed {
 		t.Fatalf("renderer = %#v", progress)
 	}
@@ -571,6 +571,140 @@ func TestIPv6RejectsIPv4OnlyStation(t *testing.T) {
 		t.Fatalf("exit code = %d", exitCode)
 	}
 	if !strings.Contains(stderr.String(), "does not support IPv6") {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+}
+
+// legacySummaryJSON is a verbatim schema-v1 run summary as soundprobe 0.1
+// wrote it: no `targets` array and the ambiguous `campus` provider ID.  This
+// build cannot read it, and must not let it break the history commands.
+const legacySummaryJSON = `{
+  "schemaVersion": 1,
+  "runId": "00000000-0000-4000-8000-000000000042",
+  "toolVersion": "0.1.3",
+  "startedAt": "2026-01-02T03:04:05Z",
+  "endedAt": "2026-01-02T03:04:20Z",
+  "command": "campus",
+  "status": "success",
+  "label": null,
+  "note": null,
+  "network": {},
+  "measurements": [
+    {
+      "provider": "campus",
+      "method": "librespeed-three-stream",
+      "status": "success",
+      "ipFamily": "ipv4",
+      "serverName": "NJU Campus · IPV4",
+      "serverFqdn": "speed.nju.edu.cn",
+      "serverAddress": null,
+      "clientPublicIp": null,
+      "pingMs": 3.1,
+      "jitterMs": 0.4,
+      "downloadMbps": 100,
+      "uploadMbps": 50,
+      "downloadBytes": null,
+      "uploadBytes": null,
+      "durationMs": 15000,
+      "concurrency": 3,
+      "helperVersion": "v1.0.13-campus.1"
+    }
+  ]
+}
+`
+
+// writeHistory seeds the app's history directory with one unreadable schema-v1
+// file and one summary written by this build.
+func writeHistory(t *testing.T, app *App) model.RunSummary {
+	t.Helper()
+	if err := os.MkdirAll(app.History.HistoryDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	legacyPath := filepath.Join(app.History.HistoryDir, "00000000-0000-4000-8000-000000000042.json")
+	if err := os.WriteFile(legacyPath, []byte(legacySummaryJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	current := successfulSummary(model.CommandCampus)
+	if err := app.History.Save(current); err != nil {
+		t.Fatal(err)
+	}
+	return current
+}
+
+func TestHistoryCommandsSkipUnreadableLegacySummaries(t *testing.T) {
+	app, stdout, stderr := newTestApp(t, &fakeRunner{})
+	current := writeHistory(t, app)
+
+	if exitCode := app.Execute(context.Background(), []string{"history", "--json"}); exitCode != 0 {
+		t.Fatalf("history exit code = %d, stderr = %q", exitCode, stderr.String())
+	}
+	var listed []model.RunSummary
+	if err := json.Unmarshal(stdout.Bytes(), &listed); err != nil {
+		t.Fatalf("history JSON: %v (%q)", err, stdout.String())
+	}
+	if len(listed) != 1 || listed[0].RunID != current.RunID {
+		t.Fatalf("history = %#v", listed)
+	}
+	if !strings.Contains(stderr.String(), "skipped 1 unreadable history file") {
+		t.Fatalf("history stderr = %q", stderr.String())
+	}
+
+	app, stdout, stderr = newTestApp(t, &fakeRunner{})
+	current = writeHistory(t, app)
+	if exitCode := app.Execute(context.Background(), []string{"last", "--json"}); exitCode != 0 {
+		t.Fatalf("last exit code = %d, stderr = %q", exitCode, stderr.String())
+	}
+	var latest model.RunSummary
+	if err := json.Unmarshal(stdout.Bytes(), &latest); err != nil {
+		t.Fatalf("last JSON: %v (%q)", err, stdout.String())
+	}
+	if latest.RunID != current.RunID {
+		t.Fatalf("last run ID = %q, want %q", latest.RunID, current.RunID)
+	}
+
+	app, stdout, stderr = newTestApp(t, &fakeRunner{})
+	current = writeHistory(t, app)
+	if exitCode := app.Execute(context.Background(), []string{"show", current.RunID, "--json"}); exitCode != 0 {
+		t.Fatalf("show exit code = %d, stderr = %q", exitCode, stderr.String())
+	}
+	var shown model.RunSummary
+	if err := json.Unmarshal(stdout.Bytes(), &shown); err != nil {
+		t.Fatalf("show JSON: %v (%q)", err, stdout.String())
+	}
+	if shown.RunID != current.RunID {
+		t.Fatalf("show run ID = %q, want %q", shown.RunID, current.RunID)
+	}
+
+	app, stdout, stderr = newTestApp(t, &fakeRunner{})
+	writeHistory(t, app)
+	exportPath := filepath.Join(t.TempDir(), "runs.jsonl")
+	if exitCode := app.Execute(context.Background(), []string{"export", "--format", "jsonl", "--output", exportPath, "--json"}); exitCode != 0 {
+		t.Fatalf("export exit code = %d, stderr = %q", exitCode, stderr.String())
+	}
+	exported, err := os.ReadFile(exportPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lines := strings.Count(strings.TrimSpace(string(exported)), "\n") + 1; lines != 1 {
+		t.Fatalf("exported %d lines, want 1: %q", lines, exported)
+	}
+	if strings.Contains(string(exported), `"provider":"campus"`) {
+		t.Fatalf("export leaked a legacy summary: %q", exported)
+	}
+	if !strings.Contains(stdout.String(), `"runs":1`) {
+		t.Fatalf("export stdout = %q", stdout.String())
+	}
+}
+
+// A run the user named by ID is the one case with nothing to degrade to: if
+// that specific file is unreadable, reporting the error beats printing nothing.
+func TestShowFailsOnAnUnreadableLegacyRun(t *testing.T) {
+	app, _, stderr := newTestApp(t, &fakeRunner{})
+	writeHistory(t, app)
+	if exitCode := app.Execute(context.Background(), []string{"show", "00000000-0000-4000-8000-000000000042"}); exitCode != 1 {
+		t.Fatalf("show exit code = %d", exitCode)
+	}
+	if !strings.Contains(stderr.String(), "unsupported schema version 1") {
 		t.Fatalf("stderr = %q", stderr.String())
 	}
 }

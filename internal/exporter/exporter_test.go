@@ -54,7 +54,7 @@ func TestWriteCSVPreservesNullAsEmpty(t *testing.T) {
 	if records[1][16] != "" {
 		t.Fatalf("measurement upload = %q, want empty for null", records[1][16])
 	}
-	if records[1][7] != string(model.ProviderCampus) {
+	if records[1][7] != string(model.ProviderNJUCampusIPv4) {
 		t.Fatalf("target = %q", records[1][7])
 	}
 	if records[0][len(records[0])-5] != "server_id" || records[0][len(records[0])-1] != "download_responsiveness_rpm" {
@@ -97,7 +97,7 @@ func testSummary() model.RunSummary {
 		Command:       model.CommandCampus,
 		Status:        model.RunStatusSuccess,
 		Measurements: []model.Measurement{{
-			Provider:     model.ProviderCampus,
+			Provider:     model.ProviderNJUCampusIPv4,
 			Method:       "librespeed-three-stream",
 			Status:       model.ProviderStatusSuccess,
 			DownloadMbps: model.Pointer(100.0),
