@@ -1,5 +1,11 @@
 # soundprobe v0.4 implementation specification
 
+This is the normative contract. Where another document in this repository
+states a measurement, identity, schema, storage or exit-code fact, this file is
+the source it defers to. [TESTING.md](TESTING.md) owns how the contract is
+verified, [RELEASE.md](RELEASE.md) owns how a release is cut, and
+[README.md](README.md) is the project front page.
+
 ## 1. Product contract
 
 soundprobe measures explicitly selected network targets. A target represents one
@@ -84,6 +90,7 @@ Run the helper with the equivalent of:
 --no-icmp
 --telemetry-level disabled
 --json
+--progress-json
 --ipv4 | --ipv6
 ```
 
@@ -92,9 +99,13 @@ before execution. Parse exactly one final JSON result and preserve server/client
 metadata, ping, jitter, upload/download rates, byte counts, duration,
 concurrency, and helper version.
 
-The maintained helper exposes a machine-readable live-rate stream through
-`--progress-json`. Interactive output may display those observed rates but must
-not fabricate samples or percentages.
+`--progress-json` is the maintained helper's machine-readable live-rate stream.
+Interactive output may display those observed rates but must not fabricate
+samples or percentages.
+
+Three concurrent streams are three parallel HTTP requests against one server.
+They are not three physical links, and the resulting figure is not comparable
+with a single-stream result such as NDT7.
 
 ### 3.1 NJU Campus
 
@@ -193,10 +204,8 @@ server sponsor identifies the test server operator; it is not a claim about the
 user's access carrier. Ookla is one automatic provider, not an IPv4/IPv6-expanded
 pair, and is excluded from default daily stations until a user actively selects it.
 
-The durable measurement model may include `serverId`, `serverSponsor`,
-`responsivenessRpm`, `uploadResponsivenessRpm`, and
-`downloadResponsivenessRpm`. These fields are optional and must remain null/absent
-when a helper does not return them.
+`serverId` and `serverSponsor` are among the optional measurement fields
+governed by section 6.
 
 ## 5. Planning and ordering
 
@@ -209,6 +218,14 @@ Bare `soundprobe` in an interactive terminal performs bounded, lightweight
 reachability probes and opens a Bubble Tea inline selector. Probes may check DNS,
 connection establishment, TLS, and a small backend response; they must not run a
 bandwidth test.
+
+The selector lists the configured daily stations, not the whole registry. On a
+host with no usable `preferences.json` the first run opens the daily-station
+setup instead, whose default selection is `nju-campus` and `mlab`, plus `apple`
+on macOS. `soundprobe setup` reopens it. A station that is not daily-eligible —
+today `nju-edge` and `cernet` — can never enter that set and therefore never
+appears in the selector; `soundprobe stations` still lists it. Preferences are
+stored next to history (section 10) with the same `0600` mode.
 
 Controls:
 
@@ -232,10 +249,12 @@ Recommendation rules:
 2. Select M-Lab and Apple as automatic public references.
 3. If Campus is not reachable, keep M-Lab and Apple rather than silently
    substituting another station.
-4. Display NJU Edge as disabled with its browser-verification explanation.
-5. Ookla is never recommended automatically; it requires an active user choice.
-6. Tongji and QLU are available but not preselected. CERNET is retained only
-   as an explicit compatibility target while its backend is unreachable.
+4. Ookla is never recommended automatically; it requires an active user choice
+   in `soundprobe setup` and remains excluded from the default daily set.
+5. Tongji and QLU are selectable in setup but not preselected. CERNET is
+   retained only as an explicit `--targets` compatibility probe while its
+   backend is unreachable, and NJU Edge only as a `stations` entry that
+   reports `terminal unsupported` with the browser URLs to use instead.
 
 Recommendations set defaults only. They do not authorize silent fallback during
 measurement.
@@ -313,22 +332,34 @@ raw provider events.
 
 ## 8. Commands
 
+`--json` is a global flag on the root command and is accepted by every
+subcommand.
+
 ```text
 soundprobe
 soundprobe run [--targets LIST] [--family ipv4|ipv6|dual] [--label TEXT] [--note TEXT] [--no-save]
 soundprobe campus [--ipv4|--ipv6] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe edge [--ipv4|--ipv6]  # reports terminal unsupported
+soundprobe edge [--ipv4|--ipv6] [--label TEXT] [--note TEXT] [--no-save]   # reports terminal unsupported
 soundprobe domestic [--targets LIST] [--family ipv4|dual] [--label TEXT] [--note TEXT] [--no-save]
 soundprobe mlab [--label TEXT] [--note TEXT] [--no-save]
-soundprobe stations [--json]
+soundprobe apple [--label TEXT] [--note TEXT] [--no-save]
+soundprobe ookla [--label TEXT] [--note TEXT] [--no-save]
+soundprobe stations
 soundprobe history [--limit N]
-soundprobe last [--json]
-soundprobe show RUN_ID [--json]
+soundprobe last
+soundprobe show RUN_ID
 soundprobe export --format jsonl|csv --output PATH
 soundprobe consent status|accept|revoke
-soundprobe doctor [--json]
+soundprobe setup
+soundprobe doctor
 soundprobe version
 ```
+
+Default plans come from the station registry, not from the command parser:
+`run` is `nju-campus`, `mlab`, `apple`; `domestic` is `tongji`, `qlu`; each
+provider command runs its own station. `domestic` accepts `ipv4` and `dual`
+only. The user-facing flag reference is
+[docs/reference/cli.mdx](docs/reference/cli.mdx).
 
 ## 9. Consent and privacy
 
@@ -396,28 +427,15 @@ measurements.
 
 ## 12. Verification gates
 
-Automated tests use mock helpers and local HTTP fixtures. They cover:
+Two rules are normative:
 
-- explicit station/family expansion and ordering;
-- selector recommendation, family switching, toggling, cancellation, and clear;
-- NJU Campus identity, Edge unsupported handling, and no fallback;
-- domestic station identity and telemetry-disabled helper arguments;
-- M-Lab live event parsing and independent failure;
-- Apple `networkQuality` success/error/timeout, interface binding and RPM fields;
-- Ookla official version validation, dynamic server metadata, and Python
-  `speedtest-cli` rejection;
-- multi-target success, partial, failure, cancellation, and skipped results;
-- schema-v2 validation of the ordered target plan, rejection of schema-v1 and
-  of the retired `campus` provider ID, and graceful skipping of unreadable
-  history files by `history`, `last` and `export`;
-- one shared failed/cancelled measurement shape across every provider;
-- normalized CSV and JSONL export;
-- inline terminal rendering, cursor restoration, and no ANSI in redirected/JSON
-  output;
-- atomic storage and `0700`/`0600` modes;
-- deterministic release artifacts and Homebrew template rendering.
+1. Routine CI must never run a real bandwidth measurement or a station
+   reachability probe. Automated tests use mock helpers and local HTTP
+   fixtures only, and that includes packaging and release-artifact tests.
+2. Every claim in this specification must be exercised either by the offline
+   gate or by a named operator acceptance step. Real measurement is an
+   operator acceptance step, performed by hand on a supported host.
 
-Routine CI must never run a real bandwidth measurement or station probe.
-Operator acceptance validates real NJU Campus, domestic stations, M-Lab
-continuation, Edge unsupported reporting, selector interaction, Homebrew
-installation, and upgrade on a supported macOS host.
+[TESTING.md](TESTING.md) is the single enumeration of what the offline gate
+covers and how each acceptance step is performed. Do not restate that list
+here.

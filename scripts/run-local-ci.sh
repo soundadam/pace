@@ -1,11 +1,19 @@
 #!/bin/sh
+# Reproduce CI locally on Linux amd64.
+#
+# This script's only unique contribution is bootstrapping the exact pinned Go
+# toolchain (checksum-verified) and a C compiler for the race detector, in an
+# isolated GOCACHE/GOENV. The checks themselves are NOT defined here: it hands
+# off to `make ci-checks`, the same target .github/workflows/ci.yml invokes, so
+# the two cannot drift. Add or remove checks in make/release.mk, not here.
 set -eu
 
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 
-# go.mod is the single source of truth for the Go version. Everything else that
-# names a Go version (this script's pinned archive, components/librespeed-cli)
-# is checked against it rather than maintained independently.
+# go.mod is the single source of truth for the Go version. The archive pin
+# below is verified against it here because bootstrap happens before make can
+# run; the full three-way pin check lives in scripts/check-go-version-pins.sh
+# and runs as part of `make ci-checks`.
 GO_VERSION=$(awk '$1 == "go" { print $2; exit }' "$ROOT/go.mod")
 if [ -z "$GO_VERSION" ]; then
   echo "run-local-ci: could not read the go directive from $ROOT/go.mod" >&2
@@ -21,12 +29,6 @@ GO_ARCHIVE_SHA256="d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b
 if [ "$GO_VERSION" != "$GO_ARCHIVE_PINNED_VERSION" ]; then
   echo "run-local-ci: go.mod pins Go $GO_VERSION but the archive checksum in this script is for $GO_ARCHIVE_PINNED_VERSION." >&2
   echo "run-local-ci: update GO_ARCHIVE_PINNED_VERSION and GO_ARCHIVE_SHA256 from https://go.dev/dl/ to match go.mod." >&2
-  exit 1
-fi
-
-COMPONENT_GO_VERSION=$(awk '$1 == "go" { print $2; exit }' "$ROOT/components/librespeed-cli/go.mod")
-if [ "$COMPONENT_GO_VERSION" != "$GO_VERSION" ]; then
-  echo "run-local-ci: components/librespeed-cli/go.mod pins Go $COMPONENT_GO_VERSION but go.mod pins $GO_VERSION." >&2
   exit 1
 fi
 
@@ -170,7 +172,14 @@ GOCACHE="$ROOT/.tools/go-build-cache"
 GOENV=off
 GOTOOLCHAIN=local
 CGO_ENABLED=1
-export PATH GOCACHE GOENV GOTOOLCHAIN CGO_ENABLED
-mkdir -p "$GOCACHE"
+# Analysis tools go into the repo-local .tools/bin rather than the developer's
+# GOPATH. Deliberately NOT added to PATH: the offline fixtures resolve helper
+# binaries by PATH, and .tools/bin also holds librespeed-cli and ndt7-client.
+GOBIN="$ROOT/.tools/bin"
+export PATH GOCACHE GOENV GOTOOLCHAIN CGO_ENABLED GOBIN
+mkdir -p "$GOCACHE" "$GOBIN"
 
-exec make -C "$ROOT" GO=go GOTOOLCHAIN=local verify-mod test-offline test-race build
+# Pinned in make/common.mk, installed the same way CI installs it.
+make -C "$ROOT" GO=go GOTOOLCHAIN=local tools-vuln
+
+exec make -C "$ROOT" GO=go GOTOOLCHAIN=local ci-checks

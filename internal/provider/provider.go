@@ -44,7 +44,6 @@ type ProgressSink func(ProgressEvent)
 type Request struct {
 	Command  model.Command
 	Targets  []model.Provider
-	IPFamily string
 	Network  *model.NetworkContext
 	Label    *string
 	Note     *string

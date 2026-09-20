@@ -194,6 +194,20 @@ func SpeedTest(c *cli.Context) error {
 		}
 	}
 
+	iface := c.String(defs.OptionInterface)
+	fwmark := c.Int(defs.OptionFwmark)
+	proxyValue := c.String(defs.OptionProxy)
+
+	// --proxy is incompatible with every option that picks a different egress
+	// path. The check runs before any dialer is built: interface and fwmark
+	// binding is Linux-only, so constructing that dialer first would report
+	// "cannot bound to interface on this platform" on macOS and Windows when the
+	// real complaint is the option combination. Both orders reject the run; only
+	// this one explains it the same way everywhere.
+	if proxyValue != "" && (c.String(defs.OptionSource) != "" || iface != "" || fwmark > 0 || forceIPv6) {
+		return errors.New("--proxy cannot be combined with source, interface, fwmark, or IPv6")
+	}
+
 	dialer := &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
@@ -208,9 +222,6 @@ func SpeedTest(c *cli.Context) error {
 	}
 
 	// bind to interface if given
-	iface := c.String(defs.OptionInterface)
-	fwmark := c.Int(defs.OptionFwmark)
-
 	if iface != "" || fwmark > 0 {
 		var err error
 		dialer, err = newDialerInterfaceOrFwmarkBound(iface, fwmark)
@@ -223,10 +234,7 @@ func SpeedTest(c *cli.Context) error {
 
 	// enforce if ipv4/ipv6 is forced
 	var dialContext func(context.Context, string, string) (net.Conn, error)
-	if proxyValue := c.String(defs.OptionProxy); proxyValue != "" {
-		if c.String(defs.OptionSource) != "" || iface != "" || fwmark > 0 || forceIPv6 {
-			return errors.New("--proxy cannot be combined with source, interface, fwmark, or IPv6")
-		}
+	if proxyValue != "" {
 		parsed, err := url.Parse(proxyValue)
 		if err != nil || parsed.Scheme != "socks5h" || parsed.User != nil || parsed.Hostname() == "" || parsed.Port() == "" {
 			return errors.New("--proxy requires socks5h://host:port without credentials")
@@ -437,12 +445,20 @@ func getServerList(forceScheme int, serverList string, excludes, specific []int,
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
+	// A captive portal or a moved list can answer an error status with a body
+	// that still parses as a server list. Trusting the body alone would measure
+	// against whatever that response happened to describe, so the status decides
+	// first.
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("server list request returned HTTP %s", resp.Status)
+	}
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	if err := json.Unmarshal(b, &servers); err != nil {
 		return nil, err

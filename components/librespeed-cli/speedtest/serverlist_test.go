@@ -1,6 +1,7 @@
 package speedtest
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -244,11 +245,30 @@ func TestGetServerList(t *testing.T) {
 		}
 	})
 
-	t.Run("an error status body is still parsed", func(t *testing.T) {
-		// Current behaviour: the status code is not inspected, so a 404
-		// whose body happens to be a valid list is accepted.
+	t.Run("an error status is rejected even when the body parses", func(t *testing.T) {
+		// A captive portal or a moved list can answer an error status with a
+		// body that still unmarshals into a server list. The status decides.
+		for _, status := range []int{http.StatusNotFound, http.StatusInternalServerError, http.StatusMovedPermanently} {
+			backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(status)
+				_, _ = io.WriteString(w, threeServers)
+			}))
+
+			_, err := getServerList(forceNothing, backend.URL, nil, nil, true)
+			backend.Close()
+			if err == nil {
+				t.Errorf("HTTP %d was accepted, want an error", status)
+				continue
+			}
+			if want := fmt.Sprintf("HTTP %d", status); !strings.Contains(err.Error(), want) {
+				t.Errorf("error = %q, want it to name %q", err, want)
+			}
+		}
+	})
+
+	t.Run("a non-200 success status is accepted", func(t *testing.T) {
 		backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusAccepted)
 			_, _ = io.WriteString(w, threeServers)
 		}))
 		defer backend.Close()

@@ -157,13 +157,26 @@ Network Destination        Netmask          Gateway       Interface  Metric
 			wantGateway: "192.168.1.1",
 		},
 		{
-			// Some VPN clients publish an on-link default route. The parser
-			// passes "On-link" through verbatim as the gateway; see the note
-			// in the package's test report.
-			name:        "on-link default route yields a non-address gateway",
+			// Some VPN clients publish an on-link default route. "On-link" is
+			// not an address, and defaultGateway holds an address on every
+			// other platform, so it is reported as absent. The interface
+			// address on the same row still drives the interface lookup.
+			name:        "on-link default route reports no gateway but keeps the interface address",
 			output:      "          0.0.0.0          0.0.0.0         On-link       10.8.0.2     25\n",
 			wantAddress: "10.8.0.2",
-			wantGateway: "On-link",
+		},
+		{
+			// Any other non-address in the gateway column is dropped the same
+			// way, rather than being special-cased to the literal "On-link".
+			name:        "non-address gateway is dropped",
+			output:      "0.0.0.0 0.0.0.0 not-an-address 10.8.0.2 25\n",
+			wantAddress: "10.8.0.2",
+		},
+		{
+			name:        "IPv6 gateway is normalised",
+			output:      "0.0.0.0 0.0.0.0 FE80::1 10.8.0.2 25\n",
+			wantAddress: "10.8.0.2",
+			wantGateway: "fe80::1",
 		},
 		{
 			name:        "the first default route wins",
@@ -359,12 +372,20 @@ Wireless LAN adapter Wi-Fi:
 			want: []string{"1.1.1.1", "10.0.0.1", "192.168.1.1"},
 		},
 		{
-			// Known gap: ipconfig prints Windows' default link-local
-			// resolvers with a zone index, which net.ParseIP rejects, so they
-			// are dropped rather than reported.
-			name:   "zone-suffixed servers are dropped",
+			// ipconfig prints Windows' default site-local resolvers with a
+			// zone index. The zone is stripped and the address kept, as
+			// localAddresses already does for interface addresses.
+			name:   "zone-suffixed servers keep the address without the zone",
 			output: "   DNS Servers . . . . . . . . . . . : fec0:0:0:ffff::1%1\n",
-			want:   []string{},
+			want:   []string{"fec0:0:0:ffff::1"},
+		},
+		{
+			// A zone-suffixed continuation line must still be recognised as an
+			// address, or it would be read as a "label: value" pair and end
+			// the run of servers early.
+			name:   "zone-suffixed continuation lines stay in the DNS run",
+			output: "   DNS Servers . . . . . . . . . . . : fec0:0:0:ffff::1%1\n                                       fec0:0:0:ffff::2%1\n                                       8.8.8.8\n",
+			want:   []string{"8.8.8.8", "fec0:0:0:ffff::1", "fec0:0:0:ffff::2"},
 		},
 		{
 			name:   "singular DNS Server label is also recognised",
@@ -534,7 +555,12 @@ func TestAppendValidIP(t *testing.T) {
 		{name: "invalid input is dropped", start: []string{"1.1.1.1"}, raw: "nope", want: []string{"1.1.1.1"}},
 		{name: "empty input is dropped", raw: ""},
 		{name: "CIDR is not an address", raw: "10.0.0.0/8"},
-		{name: "zone suffix is rejected", raw: "fe80::1%en0"},
+		// The zone identifies the interface, not the resolver, and
+		// localAddresses drops it too; keeping only the address leaves the two
+		// paths agreeing on the same input.
+		{name: "zone suffix is stripped, not rejected", raw: "fe80::1%en0", want: []string{"fe80::1"}},
+		{name: "zone suffix on an IPv4 address", raw: "192.168.1.1%3", want: []string{"192.168.1.1"}},
+		{name: "a bare zone suffix is still dropped", raw: "%en0"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

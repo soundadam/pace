@@ -1,0 +1,49 @@
+# golangci-lint configuration for soundprobe.
+#
+# REPORT ONLY. This is deliberately not a CI gate and nothing in the tree has
+# been changed to satisfy it. `make lint` prints findings and always exits 0;
+# the CI job that runs it is marked continue-on-error. Whether any of this
+# becomes blocking is a separate decision, taken after reading the report.
+#
+# The same file serves both modules: `make lint` runs golangci-lint inside the
+# root module and inside components/librespeed-cli, and configuration discovery
+# walks up to this file from both.
+#
+# `make lint-strict` layers revive, bodyclose, errorlint, nilerr and prealloc on
+# top of this set via --enable, without changing what is committed here, so the
+# cost of a stricter configuration can be seen before adopting it.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - gocritic
+    - staticcheck
+    - unused
+
+  exclusions:
+    generated: lax
+    # golangci-lint's own conventional exclusions. Without these the report is
+    # dominated by `defer f.Close()` and similar, which drowns out the findings
+    # that are worth reading.
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      # Vendored/derived third-party sources live under components/ as their own
+      # module; they are linted by their own `make lint` pass, not through the
+      # root module's package patterns.
+      - third_party
+
+# No formatters: gofmt is already enforced by `make fmt-check` and the CI gofmt
+# step. Adding gofumpt/goimports here would create a second, disagreeing
+# definition of "formatted".
+formatters:
+  enable: []

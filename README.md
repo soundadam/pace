@@ -22,8 +22,8 @@ Windows，Go 编写，终端界面基于 Bubble Tea 内联渲染。
   `skipped` 与 null 速率。失败不伪装成成功。
 - **JSON 自动化**：全局 `--json` 输出单个无 ANSI 文档，退出码稳定，
   历史可导出 JSONL/CSV。
-- **隐私 fail-closed**：M-Lab 测试要求显式接受其隐私政策，无同意记录
-  时非交互命令直接失败；soundprobe 自身无遥测、无 ASN/地理定位。
+- **隐私 fail-closed**：M-Lab 测试要求显式同意，缺同意即失败；soundprobe
+  自身不采集任何数据（见下文 M-Lab 隐私）。
 
 ## 终端演示
 
@@ -45,29 +45,31 @@ Apple networkQuality  apple-networkquality     486.20 Mbps  88.31 Mbps  —     
 ## 快速开始
 
 ```sh
-brew tap soundadam/tap
-brew install soundprobe
+brew install --cask soundadam/tap/soundprobe
 soundprobe doctor --json
 soundprobe
 ```
 
 首次在交互终端运行会选择日常测速站（macOS 默认预选
 `nju-campus`、`mlab`、`apple`；Linux/Windows 预选 `nju-campus`、
-`mlab`），之后可用 `soundprobe setup` 修改。Homebrew Formula 当前只
-覆盖 macOS；Linux/Windows 使用 release 二进制或源码构建，详见
+`mlab`），之后可用 `soundprobe setup` 修改。Homebrew cask 只覆盖
+macOS；Linux/Windows 使用 release 二进制或源码构建，详见
 [安装文档](docs/getting-started/installation.mdx)。
 
 ## 测速视角
 
-| 目标 ID | 默认 | 它回答的问题 | 方法与结果边界 |
-| --- | --- | --- | --- |
-| `nju-campus` | 是 | 南大校内服务、校园网或 NJU VPN 是否连通 | LibreSpeed 三流；IPv4/IPv6 可分别选择 |
-| `mlab` | 是 | 当前公网/代理出口的 bulk-transport 表现 | M-Lab NDT7 单流；节点由 Locate 动态返回 |
-| `apple` | macOS 默认 | macOS 内置的公网吞吐与负载下响应性 | `/usr/bin/networkQuality -c -s`；显示吞吐、基础 RTT 与 RPM；Linux/Windows 自动跳过 |
-| `ookla` | 否 | 附近 Ookla 测试服务器的运营商侧参考 | 仅官方 Speedtest CLI；动态服务器、ID、赞助方和地址写入结果 |
-| `tongji` | 否 | 上海及江浙沪方向的教育网参考 | Tongji LibreSpeed 三流，IPv4 |
-| `qlu` | 否 | 山东方向的教育网参考 | QLU LibreSpeed 三流，IPv4；受路由和服务器负载影响 |
-| `cernet` | 否 | CERNET 公共站点兼容性 | 当前服务不可达，保留显式诊断，不进入日常设置 |
+| 目标 ID | 默认 | 它回答的问题 |
+| --- | --- | --- |
+| `nju-campus` | 是 | 南大校内服务、校园网或 NJU VPN 是否连通 |
+| `mlab` | 是 | 当前公网/代理出口的 bulk-transport 表现 |
+| `apple` | macOS 默认 | macOS 内置的公网吞吐与负载下响应性 |
+| `ookla` | 否 | 附近 Ookla 测试服务器的运营商侧参考 |
+| `tongji` | 否 | 上海及江浙沪方向的教育网参考 |
+| `qlu` | 否 | 山东方向的教育网参考 |
+| `cernet` | 否 | CERNET 公共站点兼容性（当前后端不可达，仅保留显式诊断） |
+
+每个站点用什么方法、pin 了哪个端点、结果里有哪些字段，由
+[SPEC.md](SPEC.md) 第 1、3、4 节规定。
 
 NJU Edge (`http://test.nju.edu.cn`、`http://test6.nju.edu.cn`) 和中科大
 网页测速是浏览器产品，不加入 CLI 测速；soundprobe 不绕过浏览器验证。
@@ -79,22 +81,21 @@ NJU Edge (`http://test.nju.edu.cn`、`http://test6.nju.edu.cn`) 和中科大
 
 ## CLI 一览
 
+新手需要的几条：
+
 ```sh
-soundprobe
-soundprobe run [--targets LIST] [--family ipv4|ipv6|dual] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe campus [--ipv4|--ipv6] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe edge [--ipv4|--ipv6]            # 如实报告终端不支持
-soundprobe domestic [--targets tongji,qlu] [--family ipv4] [--no-save]
-soundprobe mlab | apple | ookla [--label TEXT] [--note TEXT] [--no-save]
-soundprobe stations [--json]
-soundprobe history [--limit N] | last [--json] | show RUN_ID [--json]
-soundprobe export --format jsonl|csv --output PATH
-soundprobe consent status|accept|revoke
-soundprobe setup | doctor [--json] | version
+soundprobe                                  # 交互选站并测速
+soundprobe run --targets nju-campus,mlab --family dual
+soundprobe stations                         # 列出站点与可达性
+soundprobe last / history / show RUN_ID     # 读历史
+soundprobe export --format csv --output runs.csv
+soundprobe consent accept                   # M-Lab 同意
+soundprobe setup / doctor / version
 ```
 
-退出码稳定：`0` 全部成功，`1` 配置/环境错误，`2` 目标失败或部分成功，
-`130` 取消。完整参数见 [CLI 命令参考](docs/reference/cli.mdx)。
+全局 `--json` 对所有子命令有效。完整参数见
+[CLI 命令参考](docs/reference/cli.mdx)，命令与退出码的规范定义见
+[SPEC.md](SPEC.md) 第 6、8 节。
 
 ## 文档
 
@@ -123,16 +124,16 @@ soundprobe setup | doctor [--json] | version
   soundprobe 不自动安装、不自动传 `--accept-license`/`--accept-gdpr`，
   并拒绝已停维护的 Python `speedtest-cli`（可用
   `SOUNDPROBE_OOKLA_PATH` 指定官方二进制）。
-- 交互式 `soundprobe ookla` 检测到冲突时，仅在用户按 Enter 确认后执行
-  官方 Homebrew 安装序列，且从不自动卸载已有 formula。
 
-细节（冲突修复、helper 解析顺序、平台目录）见
-[安装文档](docs/getting-started/installation.mdx)。
+安装步骤、冲突修复与平台目录见
+[安装文档](docs/getting-started/installation.mdx)；helper 解析顺序与
+Ookla 的完整规则见 [SPEC.md](SPEC.md) 第 4.2、11 节。
 
 ## M-Lab 隐私（要点）
 
-M-Lab 会公开并无限期保留测试结果和 ISP 提供的公网 IP（[隐私政策](https://www.measurementlab.net/privacy/)）。
-soundprobe 要求显式同意且 fail closed：
+M-Lab 会收集 ISP 提供的公网 IP 与测量结果，并公开、无限期保留实验数据
+（[隐私政策](https://www.measurementlab.net/privacy/)）。soundprobe 要求
+显式同意且 fail closed：
 
 ```sh
 soundprobe consent accept
@@ -140,37 +141,32 @@ soundprobe consent status
 ```
 
 无同意记录时，非交互命令在接触 M-Lab 前以 `consent_required` 失败；
-不含 M-Lab 的计划不需要这一步。详见
+不含 M-Lab 的计划不需要这一步。soundprobe 自身无遥测、无远程结果服务、
+无 ASN 或地理定位查询。详见
 [M-Lab 隐私与同意](docs/reference/mlab-privacy.mdx)。
 
 ## JSON、历史与自动化（要点）
 
 每次结果包含按执行顺序排列的 `targets` 与 `measurements`，可选字段
 （`serverId`、`serverSponsor`、三类 RPM）缺省时保持 null/absent。历史
-永久保存在用户配置目录（目录 `0700`、文件 `0600`、原子写入）：
+永久保存在用户配置目录，不会自动清理；`export --format jsonl|csv`
+导出全部历史。
 
-```text
-macOS:   ~/Library/Application Support/soundprobe/history/v2/<run-id>.json
-Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v2/<run-id>.json
-Windows: %AppData%\soundprobe\history\v2\<run-id>.json
-```
-
-`export --format jsonl|csv` 导出全部历史。字段表与脚本示例见
+schema 版本、字段语义与存储路径/权限由 [SPEC.md](SPEC.md) 第 2、6、10
+节规定；字段表与脚本示例见
 [JSON 输出与自动化](docs/reference/json-and-automation.mdx)。
 
 ## 本地开发
 
 ```sh
 make test-offline   # 全部离线测试（fixtures/mock helper）
-make test-race
 make build
 ./bin/soundprobe version
 ```
 
-测试、Formula 与 release automation 只使用 fixtures/mock helper，常规
-CI 不执行真实带宽测试；真实测速由对应平台操作者单独验收。Makefile
-目标拆分在 `make/*.mk`。流程详见 [TESTING.md](TESTING.md) 与
-[RELEASE.md](RELEASE.md)。
+常规 CI 不执行真实带宽测试，真实测速由对应平台操作者单独验收。
+Makefile 目标拆分在 `make/*.mk`。验证流程见 [TESTING.md](TESTING.md)，
+发布流程见 [RELEASE.md](RELEASE.md)。
 
 ## 许可与第三方
 

@@ -9,6 +9,12 @@
 # package set as `make test-offline`, only under the race detector, so it
 # adds no new network behaviour. govulncheck is static analysis; the only
 # thing it fetches is the Go vulnerability database.
+#
+# The check sequence itself is NOT defined here. `make ci-checks`
+# (make/release.mk) is the single definition, and scripts/run-local-ci.sh runs
+# the same target, so a local run cannot drift away from what CI enforces. Add
+# or remove a check there, not in this file. The two jobs that are not part of
+# that sequence say below why they are separate.
 name: CI
 
 on:
@@ -20,18 +26,13 @@ on:
 permissions:
   contents: read
 
-env:
-  # Pinned for reproducible runs. The advisory database is still fetched at
-  # run time, so results can change without this moving.
-  GOVULNCHECK_VERSION: v1.8.0
-
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Lint and offline tests
+  checks:
+    name: Checks (make ci-checks)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -44,101 +45,22 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: gofmt
-        # components/ has its own module and is gated by the `component` job
-        # below; this step covers the project's own packages.
-        run: |
-          unformatted="$(gofmt -l cmd internal)"
-          if [ -n "$unformatted" ]; then
-            echo "gofmt required on:" >&2
-            echo "$unformatted" >&2
-            exit 1
-          fi
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: Go version pinning is consistent
-        # go.mod is the single source of truth. Anything else that names a Go
-        # version must agree with it, so the three pins cannot drift apart.
-        run: |
-          root="$(awk '$1 == "go" { print $2; exit }' go.mod)"
-          component="$(awk '$1 == "go" { print $2; exit }' components/librespeed-cli/go.mod)"
-          local_ci="$(awk -F'"' '/^GO_ARCHIVE_PINNED_VERSION=/ { print $2; exit }' scripts/run-local-ci.sh)"
-          echo "go.mod=$root component=$component run-local-ci.sh=$local_ci"
-          if [ -z "$root" ] || [ "$component" != "$root" ] || [ "$local_ci" != "$root" ]; then
-            echo "Go version pins disagree; go.mod is authoritative." >&2
-            exit 1
-          fi
-
-      - name: Offline test suite
-        run: make test-offline
-
-      - name: Offline test suite (race detector)
-        # Guards the goroutine fan-out in internal/target and the prepareMu
-        # helper caching in internal/provider/{campus,mlab}. Previously only
-        # reachable through scripts/run-local-ci.sh, so CI never ran it.
-        run: make test-race
-
-  vulncheck:
-    name: govulncheck
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        module:
-          - .
-          - components/librespeed-cli
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
+        # Version pinned in make/common.mk, the same definition the local
+        # `make test-vuln` reads. Nothing here names a version.
+        run: make tools-vuln
 
-      - name: govulncheck (${{ matrix.module }})
-        # Non-zero exit on any affecting vulnerability fails the build.
-        working-directory: ${{ matrix.module }}
-        run: govulncheck ./...
-
-  component:
-    name: Component (librespeed-cli)
-    # components/librespeed-cli is a nested module, so the root `go build ./...`
-    # and `go vet ./...` do not reach it. Gate it explicitly.
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: components/librespeed-cli
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: components/librespeed-cli/go.mod
-
-      - name: gofmt
-        # This is a locally-modified LGPL-3.0 derivative that will need future
-        # rebases against upstream, but it is currently gofmt-clean, so hold
-        # the line rather than letting drift in.
-        run: |
-          unformatted="$(gofmt -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "gofmt required on:" >&2
-            echo "$unformatted" >&2
-            exit 1
-          fi
-
-      - name: go build
-        run: go build ./...
-
-      - name: go vet
-        run: go vet ./...
+      - name: make ci-checks
+        # check-versions, fmt-check, verify-mod, test-offline, test-race,
+        # component-check, test-cover, test-vuln, build.
+        run: make ci-checks
 
   build:
     name: Build (${{ matrix.os }})
+    # Not part of `ci-checks`: a cross-platform compile smoke test that
+    # scripts/run-local-ci.sh (Linux amd64 only) cannot reproduce. Kept as
+    # plain `go build` rather than make targets so it does not depend on GNU
+    # make being present on the Windows runner image.
     strategy:
       fail-fast: false
       matrix:
@@ -159,3 +81,32 @@ jobs:
 
       - name: Build soundprobe binary
         run: go build ./cmd/soundprobe
+
+  lint:
+    name: golangci-lint (report only)
+    # Deliberately NOT a gate and deliberately not part of `ci-checks`.
+    # golangci-lint is being introduced in report-only mode: the findings are
+    # published for a human to triage, and nothing in the tree has been changed
+    # to satisfy them. `make lint` always exits 0; continue-on-error is belt
+    # and braces so a future tool crash cannot turn this into a blocker.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Install golangci-lint
+        # Version pinned in make/common.mk, same as the local `make lint`.
+        run: make tools-lint
+
+      - name: make lint
+        run: make lint
+
+      - name: make lint-strict
+        # The broader set (revive, bodyclose, errorlint, nilerr, prealloc) that
+        # is not in .golangci.yml, so the cost of a stricter configuration is
+        # visible before anyone commits to it.
+        run: make lint-strict

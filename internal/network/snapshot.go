@@ -177,7 +177,16 @@ func parseWindowsRoute(output string) (string, string) {
 		if len(fields) < 5 || fields[0] != "0.0.0.0" || fields[1] != "0.0.0.0" {
 			continue
 		}
-		return fields[3], fields[2]
+		// Some VPN clients publish an on-link default route, so the gateway
+		// column reads "On-link" rather than an address. defaultGateway holds an
+		// IP on every other platform, so a non-address is reported as absent
+		// rather than leaked through as a literal. The interface address on the
+		// same row is unaffected and still drives the active-interface lookup.
+		gateway := ""
+		if ip := parseIPWithZone(fields[2]); ip != nil {
+			gateway = ip.String()
+		}
+		return fields[3], gateway
 	}
 	return "", ""
 }
@@ -218,7 +227,7 @@ func localAddresses(activeInterface string) ([]string, []string) {
 		for _, address := range networkInterface.Addresses {
 			ip, _, err := net.ParseCIDR(address.String())
 			if err != nil {
-				ip = net.ParseIP(strings.Split(address.String(), "%")[0])
+				ip = parseIPWithZone(address.String())
 			}
 			if ip == nil || ip.IsLoopback() {
 				continue
@@ -287,8 +296,10 @@ func parseWindowsDNS(output string) []string {
 		trimmed := strings.TrimSpace(line)
 		// Continuation lines carry nothing but an address. They must be
 		// recognised before the "label: value" split, because an IPv6 server
-		// contains colons and would otherwise be mistaken for a new label.
-		if inDNS && net.ParseIP(trimmed) != nil {
+		// contains colons and would otherwise be mistaken for a new label. The
+		// zone suffix is tolerated here too, or a "fec0:0:0:ffff::1%1"
+		// continuation line would be read as a label and end the run.
+		if inDNS && parseIPWithZone(trimmed) != nil {
 			servers = appendValidIP(servers, trimmed)
 			continue
 		}
@@ -308,9 +319,18 @@ func parseWindowsDNS(output string) []string {
 	return uniqueSorted(servers)
 }
 
+// parseIPWithZone parses an address that may carry a %zone suffix, as Windows
+// reports for link-local and site-local resolvers ("fec0:0:0:ffff::1%1") and as
+// the Go resolver reports for link-local interface addresses. The zone is
+// dropped from the result. Every address-shaped value in this package goes
+// through here so that no two paths disagree about what counts as an address.
+func parseIPWithZone(raw string) net.IP {
+	value, _, _ := strings.Cut(strings.TrimSpace(raw), "%")
+	return net.ParseIP(value)
+}
+
 func appendValidIP(values []string, raw string) []string {
-	value := strings.TrimSpace(raw)
-	if ip := net.ParseIP(value); ip != nil {
+	if ip := parseIPWithZone(raw); ip != nil {
 		return append(values, ip.String())
 	}
 	return values

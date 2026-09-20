@@ -1,0 +1,4 @@
+STATION     FAMILY  STATUS       LATENCY  DETAIL
+nju-campus  ipv4    reachable    3 ms
+qlu         ipv4    unreachable  —        dial tcp: i/o timeout
+nju-edge    ipv4    unsupported  —        web-only station

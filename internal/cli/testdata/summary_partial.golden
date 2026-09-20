@@ -1,0 +1,7 @@
+soundprobe 1.2.3 · partial · 12s
+Run 00000000-0000-4000-8000-000000000001
+Network en0 · wifi · eduroam
+TARGET             METHOD                   DOWNLOAD     UPLOAD     SERVER            STATUS
+NJU Campus · IPv4  librespeed-three-stream  942.50 Mbps  7.25 Mbps  speed.nju.edu.cn  success
+M-Lab              ndt7                     —            —          —                 failed
+mlab error [connect/unreachable]: M-Lab server was unreachable

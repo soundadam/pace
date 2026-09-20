@@ -1,0 +1,5 @@
+RUN ID                                STARTED              COMMAND   STATUS     LABEL
+00000000-0000-4000-8000-000000000001  2026-07-21 08:00:00  run       success    dorm-wifi
+short-id                              2026-07-21 09:30:00  domestic  partial
+00000000-0000-4000-8000-000000000003  2026-07-21 11:00:00  mlab      failed     a considerably longer label than the rest
+00000000-0000-4000-8000-000000000004  2026-07-21 12:00:00  ookla     cancelled

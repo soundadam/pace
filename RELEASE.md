@@ -26,11 +26,11 @@ brew install --cask soundadam/tap/soundprobe
 ## Principles (unchanged from the manual era)
 
 - **Never release from a dirty worktree.** The tag must point at a commit
-  that passed automated and operator acceptance.
-- **CI never runs a real bandwidth measurement.** `make test-offline` and
-  all packaging tests use local fixtures only.
-- **Real measurements are operator acceptance**, performed manually from
-  [TESTING.md](TESTING.md) before tagging.
+  that passed both the offline gate and operator acceptance from
+  [TESTING.md](TESTING.md).
+- **CI never measures.** That rule and its scope belong to
+  [SPEC.md section 12](SPEC.md#12-verification-gates); packaging and
+  release-artifact tests are bound by it too.
 - **Release assets are immutable.** Once a cask or Formula references a
   checksum, never edit or replace the asset; ship a new version instead.
 - **Helper licensing stays explicit.** The archives contain only the MIT
@@ -53,18 +53,11 @@ brew install --cask soundadam/tap/soundprobe
 
 ## 2. Before tagging
 
-On a supported macOS machine:
-
-```sh
-make test-offline
-GOTOOLCHAIN=auto go test -race ./...
-make build
-./bin/soundprobe doctor --json
-```
-
-Perform the real operator tests from [TESTING.md](TESTING.md) (NJU IPv4 /
-IPv6, M-Lab after consent, combined run, partial failure, Ctrl-C and
-history readback).
+On a supported macOS machine, run the offline gate and the real operator
+acceptance steps from [TESTING.md](TESTING.md) — sections 1 and 2 for the
+gate and the build, then sections 5 through 12 for real measurement, NJU IPv4
+and IPv6, M-Lab after consent, a combined run, a partial failure, Ctrl-C, and
+history readback.
 
 Optionally rehearse the release locally:
 
@@ -104,17 +97,10 @@ When the `Release` workflow finishes:
 - `soundadam/homebrew-tap` received a commit updating
   `Casks/soundprobe.rb` with the new version and sha256.
 
-Then, on macOS:
-
-```sh
-brew update
-brew install --cask soundadam/tap/soundprobe
-soundprobe version
-soundprobe doctor
-```
-
-Cask-level checks are offline; a real measurement afterwards is optional
-operator verification, never CI.
+Then, on macOS, run the cask half of
+[TESTING.md section 12](TESTING.md#12-homebrew-gate). Cask-level checks are
+offline; a real measurement afterwards is optional operator verification,
+never CI.
 
 Prerelease tags (e.g. `v0.4.0-rc1`) create a GitHub prerelease and skip the
 tap update.

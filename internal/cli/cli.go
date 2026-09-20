@@ -49,6 +49,10 @@ type App struct {
 	Preferences               *preferences.Store
 	LookupCommand             func(string) (string, error)
 	RunCommand                func(context.Context, string, []string, io.Writer, io.Writer) error
+	// ProbeStations backs `soundprobe stations`.  It is a field so that tests
+	// can exercise the command without the real reachability probes, which
+	// open sockets to every known station.
+	ProbeStations func(context.Context, time.Duration) []target.ProbeResult
 }
 
 type commandOptions struct {
@@ -114,6 +118,9 @@ func (app *App) setDefaults() {
 	}
 	if app.RunCommand == nil {
 		app.RunCommand = runCommand
+	}
+	if app.ProbeStations == nil {
+		app.ProbeStations = target.ProbeAll
 	}
 }
 

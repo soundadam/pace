@@ -180,7 +180,14 @@ func (app *App) newMeasureCommand(state *execution, command model.Command, short
 	flags := cmd.Flags()
 	if command == model.CommandRun || command == model.CommandDomestic {
 		flags.StringVar(&options.targets, "targets", "", `comma-separated station IDs (see "soundprobe stations")`)
-		flags.StringVar(&options.family, "family", string(target.FamilyIPv4), "address family: ipv4, ipv6, or dual")
+		// domestic stations are IPv4-only, and target.PlanForCommand rejects
+		// ipv6 for them. Advertising it here would promise a plan the command
+		// refuses to build.
+		familyUsage := "address family: ipv4, ipv6, or dual"
+		if command == model.CommandDomestic {
+			familyUsage = "address family: ipv4 or dual (domestic stations are IPv4-only)"
+		}
+		flags.StringVar(&options.family, "family", string(target.FamilyIPv4), familyUsage)
 	}
 	if command == model.CommandCampus || command == model.CommandEdge {
 		flags.BoolVar(&options.ipv4, "ipv4", false, "use the IPv4 service")

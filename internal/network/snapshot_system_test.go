@@ -593,6 +593,16 @@ func TestDefaultRoute(t *testing.T) {
 			wantGateway: "192.168.1.1",
 		},
 		{
+			// A VPN client's on-link default route still identifies the active
+			// interface; only the gateway is absent.
+			name: "windows on-link default route resolves the interface with no gateway",
+			goos: "windows",
+			responses: map[string]commandResult{"route": {output: `          0.0.0.0          0.0.0.0         On-link        10.8.0.2     25
+`}},
+			interfaces:    []netInterface{{Name: "OpenVPN TAP", Flags: upInterface, Addresses: addrs("10.8.0.2/24")}},
+			wantInterface: "OpenVPN TAP",
+		},
+		{
 			name:      "windows route command fails",
 			goos:      "windows",
 			responses: map[string]commandResult{"route": {err: errExitStatus1}},
@@ -646,6 +656,30 @@ func TestDNSServers(t *testing.T) {
 			goos:      "windows",
 			responses: map[string]commandResult{"ipconfig": {output: "   DNS Servers . . . . . . . . . . . : 8.8.8.8\n                                       8.8.4.4\n"}},
 			want:      []string{"8.8.4.4", "8.8.8.8"},
+		},
+		{
+			// Windows reports its site-local resolver with a zone index.
+			// localAddresses already strips %zone, so dropping the address here
+			// would leave the two paths disagreeing about the same input.
+			name:      "windows keeps a zone-suffixed resolver, without the zone",
+			goos:      "windows",
+			responses: map[string]commandResult{"ipconfig": {output: "   DNS Servers . . . . . . . . . . . : fec0:0:0:ffff::1%1\n                                       fec0:0:0:ffff::2%1\n"}},
+			want:      []string{"fec0:0:0:ffff::1", "fec0:0:0:ffff::2"},
+		},
+		{
+			// The zone-suffixed continuation line must not be mistaken for a
+			// new "label: value" pair, which would end the run of servers and
+			// silently drop every address after the first.
+			name:      "windows zone-suffixed continuation does not end the DNS run",
+			goos:      "windows",
+			responses: map[string]commandResult{"ipconfig": {output: "   DNS Servers . . . . . . . . . . . : 8.8.8.8\n                                       fec0:0:0:ffff::1%1\n                                       8.8.4.4\n   NetBIOS over Tcpip. . . . . . . . : Enabled\n"}},
+			want:      []string{"8.8.4.4", "8.8.8.8", "fec0:0:0:ffff::1"},
+		},
+		{
+			name:       "linux resolv.conf keeps a zone-suffixed nameserver",
+			goos:       "linux",
+			resolvConf: pointerTo("nameserver fe80::1%eth0\n"),
+			want:       []string{"fe80::1"},
 		},
 		{
 			name:       "windows falls back to resolv.conf when ipconfig fails",

@@ -1,0 +1,8 @@
+soundprobe test diagnostics
+Campus    ready
+M-Lab     ready
+Apple     networkQuality is only available on macOS
+Ookla     speedtest helper not found in PATH
+Consent   false
+Combined  false
+History   /home/user/.config/soundprobe/history

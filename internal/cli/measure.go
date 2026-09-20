@@ -155,7 +155,7 @@ func (app *App) executeMeasurementPlan(ctx context.Context, command model.Comman
 
 func (app *App) executeStations(ctx context.Context, jsonMode bool) int {
 	probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	results := target.ProbeAll(probeCtx, 1500*time.Millisecond)
+	results := app.ProbeStations(probeCtx, 1500*time.Millisecond)
 	cancel()
 	if jsonMode {
 		if err := json.NewEncoder(app.Out).Encode(results); err != nil {

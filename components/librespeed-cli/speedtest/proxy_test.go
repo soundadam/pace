@@ -299,20 +299,19 @@ func TestProxyIncompatibleOptions(t *testing.T) {
 	port := freeLoopbackPort(t)
 	proxy := "socks5h://127.0.0.1:" + port
 
+	// The compatibility check runs before any dialer is constructed, so the
+	// message is the same on every platform. Interface and fwmark binding is
+	// Linux-only: if the dialer were built first, macOS and Windows would
+	// answer "cannot bound to interface on this platform" instead, which names
+	// the wrong problem.
 	for _, tc := range []struct {
 		name string
 		args []string
-		// exact is false for the options whose dialer is built before the
-		// --proxy compatibility check runs. On Linux that dialer is built
-		// successfully and the message below is produced; on every other
-		// platform newDialerInterfaceOrFwmarkBound fails first and its own
-		// error surfaces instead. Either way the combination is rejected.
-		exact bool
 	}{
-		{"source", []string{"--source", "127.0.0.1"}, true},
-		{"interface", []string{"--interface", "lo0"}, false},
-		{"fwmark", []string{"--fwmark", "7"}, false},
-		{"ipv6", []string{"--ipv6"}, true},
+		{"source", []string{"--source", "127.0.0.1"}},
+		{"interface", []string{"--interface", "lo0"}},
+		{"fwmark", []string{"--fwmark", "7"}},
+		{"ipv6", []string{"--ipv6"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			args := append([]string{
@@ -325,11 +324,8 @@ func TestProxyIncompatibleOptions(t *testing.T) {
 			if result.Err == nil {
 				t.Fatalf("--proxy with --%s was accepted, want it rejected", tc.name)
 			}
-			if tc.exact && result.Err.Error() != want {
+			if result.Err.Error() != want {
 				t.Errorf("error = %q, want %q", result.Err, want)
-			}
-			if !tc.exact {
-				t.Logf("rejected with: %v", result.Err)
 			}
 		})
 	}
