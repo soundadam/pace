@@ -27,7 +27,7 @@ modules:
   - type: snapshot
     title: 为什么不用一个测速网站
     body: 常见的测速网站挑离你最近的运营商服务器，测出来的是最好看的那一段路，再给你一个数字。教育网用户的问题往往在别处：校内服务连不上、VPN 掉了、CERNET 出口拥堵，或者代理出口慢。{title} 按顺序测每一个选中的目标，结果并排列出，从不互相替换、排名或折算成一个分数。
-    note: 南大校内测速用 `speed.nju.edu.cn`。CERNET 公共测速站目前不可达，{title} 照实报告，不拿别的站点顶替。
+    note: 南大校内测速用 `speed.nju.edu.cn`。某个站点连不上时，{title} 照实报告，不拿别的站点顶替。
     metrics:
       - value: "6"
         label: 个测速视角：南大校园网、同济、CERNET、M-Lab、Apple、Ookla
@@ -42,6 +42,11 @@ modules:
     title: 校园网、教育网、代理出口，一次测完
     index: 1/3
     lede: "`pace` 打开交互界面，第一次运行时挑好日常测速站。`nju-campus` 用三条并发流测南大校园网或校园 VPN，IPv4 和 IPv6 可以分开测；`tongji` 是江浙沪方向的教育网参考；`mlab` 从当前公网出口测 M-Lab，开着代理测到的就是代理出口。目标串行执行，互不抢带宽。"
+
+  - type: media
+    image: terminal.svg
+    alt: 终端里的 pace run，一次测完南大校园网、CERNET 和同济三个目标，各自给出下载、上传、测速服务器和状态
+    caption: "2026-10-04 在南大校内有线网络上的一次实测：同一次运行里，校园网、教育网骨干和跨省教育网各是各的数。"
 
   - type: section
     title: 失败就记失败

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 226" role="img" aria-labelledby="pace-terminal-title">
+  <title id="pace-terminal-title">Terminal session: pace measuring the NJU campus, CERNET and Tongji stations in one run</title>
+  <defs>
+    <linearGradient id="desk" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f5f3fa"/>
+      <stop offset="0.55" stop-color="#edebf5"/>
+      <stop offset="1" stop-color="#e4e6f0"/>
+    </linearGradient>
+    <filter id="win-shadow" x="-30%" y="-20%" width="160%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1a1440" flood-opacity="0.24"/>
+    </filter>
+    <style>
+      .t { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; }
+      .ui2 { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; }
+      .cmd { fill: #f2f2f7; font-weight: 600; }
+      .out { fill: #9aa2b1; }
+      .head { fill: #c9ced8; font-weight: 600; }
+      .p { fill: #7ee787; font-weight: 600; }
+      .hi { fill: #79c0ff; }
+      .ok { fill: #7ee787; }
+    </style>
+  </defs>
+
+  <rect width="760" height="226" fill="url(#desk)"/>
+
+  <g filter="url(#win-shadow)">
+    <rect x="30" y="22" width="700" height="182" rx="10" fill="#17171f"/>
+  </g>
+  <rect x="30" y="22" width="700" height="182" rx="10" fill="#17171f" stroke="#000000" stroke-opacity="0.35" stroke-width="0.75"/>
+  <path d="M 30 32 A 10 10 0 0 1 40 22 L 720 22 A 10 10 0 0 1 730 32 L 730 50 L 30 50 Z" fill="#26262f"/>
+  <circle cx="50" cy="36" r="5.6" fill="#ff5f57"/>
+  <circle cx="69" cy="36" r="5.6" fill="#febc2e"/>
+  <circle cx="88" cy="36" r="5.6" fill="#28c840"/>
+  <text x="380" y="40" class="ui2" font-size="11" fill="#9a9aa4" text-anchor="middle">pace &#8212; bash</text>
+
+  <g class="t">
+    <text x="48" y="70"><tspan class="p">$</tspan><tspan dx="7" class="cmd">pace run --targets nju-campus,cernet,tongji --no-save</tspan></text>
+    <text x="48" y="86" class="cmd">pace 0.5.0 · <tspan class="ok">success</tspan> · 1m6.1s</text>
+    <text x="48" y="102" class="out">Run 8b6eb628-6b17-4e5e-a4c1-2477666182fa</text>
+    <text x="48" y="118" class="out">Network ens65f1 · other</text>
+    <text x="48" y="134" class="head">TARGET&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;METHOD&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;DOWNLOAD&#160;&#160;&#160;&#160;&#160;UPLOAD&#160;&#160;&#160;&#160;&#160;&#160;&#160;SERVER&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;STATUS</text>
+    <text x="48" y="150" class="out">NJU Campus · IPv4&#160;&#160;librespeed-three-stream&#160;&#160;<tspan class="hi">939.36 Mbps</tspan>&#160;&#160;<tspan class="hi">138.46 Mbps</tspan>&#160;&#160;speed.nju.edu.cn&#160;&#160;&#160;&#160;&#160;&#160;<tspan class="ok">success</tspan></text>
+    <text x="48" y="166" class="out">CERNET · IPv4&#160;&#160;&#160;&#160;&#160;&#160;librespeed-three-stream&#160;&#160;<tspan class="hi">480.81 Mbps</tspan>&#160;&#160;<tspan class="hi">507.98 Mbps</tspan>&#160;&#160;speedtest.sec.edu.cn&#160;&#160;<tspan class="ok">success</tspan></text>
+    <text x="48" y="182" class="out">Tongji · IPv4&#160;&#160;&#160;&#160;&#160;&#160;librespeed-three-stream&#160;&#160;<tspan class="hi">76.54 Mbps</tspan>&#160;&#160;&#160;<tspan class="hi">56.97 Mbps</tspan>&#160;&#160;&#160;dev.tongji.edu.cn&#160;&#160;&#160;&#160;&#160;<tspan class="ok">success</tspan></text>
+  </g>
+</svg>
