@@ -1,4 +1,4 @@
-# Testing soundprobe
+# Testing pace
 
 Routine tests never contact real NJU, M-Lab, or domestic bandwidth servers.
 Real measurements are explicit operator acceptance steps.
@@ -43,7 +43,7 @@ On Linux amd64, the reproducible KVM gate remains:
 make ci
 ```
 
-CI must not run `soundprobe stations` because that command intentionally performs
+CI must not run `pace stations` because that command intentionally performs
 real lightweight reachability probes.
 
 ## 2. Build and helpers
@@ -51,7 +51,7 @@ real lightweight reachability probes.
 ```sh
 make tools
 make build
-./bin/soundprobe doctor --json
+./bin/pace doctor --json
 ```
 
 Expected helper versions:
@@ -68,16 +68,16 @@ v0.10.1
 
 Helper discovery order:
 
-1. installed `../libexec/soundprobe`;
+1. installed `../libexec/pace`;
 2. repository-local `.tools/bin`;
 3. explicit developer PATH fallback.
 
 ## 3. M-Lab consent
 
 ```sh
-./bin/soundprobe consent status
-./bin/soundprobe consent accept
-./bin/soundprobe consent status
+./bin/pace consent status
+./bin/pace consent accept
+./bin/pace consent status
 ```
 
 Acceptance requires a terminal and the exact word `accept`. A noninteractive
@@ -92,7 +92,7 @@ macOS; Linux and Windows should report it as an unavailable optional provider
 without failing the base run:
 
 ```sh
-./bin/soundprobe doctor --json
+./bin/pace doctor --json
 /usr/bin/networkQuality -h  # macOS only
 speedtest --version          # only when the official Ookla CLI was installed intentionally
 ```
@@ -100,13 +100,13 @@ speedtest --version          # only when the official Ookla CLI was installed in
 Apple must run once with `-c -s` (and `-I <active-interface>` when known), and its
 JSON must expose throughput, base RTT and RPM fields. Ookla must run once with
 `--format=json`; inspect server ID, sponsor, host/address, latency, jitter and
-address family. soundprobe never passes `--accept-license` or `--accept-gdpr`.
+address family. pace never passes `--accept-license` or `--accept-gdpr`.
 A Python `speedtest-cli` binary must be reported as unavailable rather than
 executed. A combined `run` must remove that optional target and continue with
-the remaining providers; an explicit `soundprobe ookla` command must fail before
+the remaining providers; an explicit `pace ookla` command must fail before
 starting a measurement.
 
-For an interactive explicit `soundprobe ookla` failure, use a fake Homebrew
+For an interactive explicit `pace ookla` failure, use a fake Homebrew
 resolver and command runner to verify that the official tap/update/install
 sequence is displayed and runs only after an empty Enter line. Verify that a
 non-empty response performs no external command, that `--json` never prompts,
@@ -117,8 +117,8 @@ and that uninstall commands are displayed only as manual conflict recovery.
 Station probes are lightweight but real:
 
 ```sh
-./bin/soundprobe stations
-./bin/soundprobe stations --json
+./bin/pace stations
+./bin/pace stations --json
 ```
 
 Verify that every registry entry has a family/status row and M-Lab is shown as
@@ -127,13 +127,13 @@ automatic rather than as a pinned server.
 Run the selector:
 
 ```sh
-./bin/soundprobe
+./bin/pace
 ```
 
 Check:
 
 - a fresh preferences path opens Chinese/English setup and saves mode `0600`;
-- `soundprobe setup` can change language and daily stations;
+- `pace setup` can change language and daily stations;
 - later bare runs show only the configured daily stations;
 - the selector clears before progress begins;
 - NJU Campus plus M-Lab and Apple are recommended; Ookla is never auto-selected;
@@ -150,8 +150,8 @@ These commands perform real uploads and downloads.
 ### Campus
 
 ```sh
-./bin/soundprobe campus --ipv4 --no-save --json
-./bin/soundprobe campus --ipv6 --no-save --json
+./bin/pace campus --ipv4 --no-save --json
+./bin/pace campus --ipv6 --no-save --json
 ```
 
 Expected target IDs:
@@ -166,13 +166,13 @@ The IPv6 result must never contain an IPv4 family or server.
 Unknown retired IDs must fail before measurement:
 
 ```sh
-./bin/soundprobe run --targets nju-edge --family dual --no-save --json
-./bin/soundprobe run --targets qlu --family ipv4 --no-save --json
-./bin/soundprobe edge --no-save --json
+./bin/pace run --targets nju-edge --family dual --no-save --json
+./bin/pace run --targets qlu --family ipv4 --no-save --json
+./bin/pace edge --no-save --json
 ```
 
 These must exit `1` as unknown targets/commands. They must not appear in
-`soundprobe stations`.
+`pace stations`.
 
 ## 7. Domestic station acceptance
 
@@ -180,14 +180,14 @@ CERNET remains an explicit compatibility probe and is expected to fail cleanly
 while its current backend is unreachable:
 
 ```sh
-./bin/soundprobe run --targets cernet --family ipv4 --no-save --json
-./bin/soundprobe run --targets tongji --family ipv4 --no-save --json
+./bin/pace run --targets cernet --family ipv4 --no-save --json
+./bin/pace run --targets tongji --family ipv4 --no-save --json
 ```
 
 Then validate sequential batch behavior:
 
 ```sh
-./bin/soundprobe domestic --no-save --json
+./bin/pace domestic --no-save --json
 ```
 
 Expected target order:
@@ -202,10 +202,10 @@ offline tests to ensure `--telemetry-level disabled` is always present.
 ## 8. M-Lab and mixed plans
 
 ```sh
-./bin/soundprobe mlab --no-save --json
-./bin/soundprobe apple --no-save --json
-./bin/soundprobe run --targets nju-campus,mlab,apple --family ipv4 --no-save --json
-./bin/soundprobe run --targets nju-campus,mlab,apple --family dual --no-save --json
+./bin/pace mlab --no-save --json
+./bin/pace apple --no-save --json
+./bin/pace run --targets nju-campus,mlab,apple --family ipv4 --no-save --json
+./bin/pace run --targets nju-campus,mlab,apple --family dual --no-save --json
 ```
 
 M-Lab uses automatic Locate selection. During a TTY run its download and upload
@@ -227,7 +227,7 @@ For an interactive combined plan, verify:
 For redirected output:
 
 ```sh
-./bin/soundprobe run --targets nju-campus --family dual --no-save > /tmp/plain.txt
+./bin/pace run --targets nju-campus --family dual --no-save > /tmp/plain.txt
 ```
 
 `/tmp/plain.txt` must have no ANSI bytes and no raw JSON.
@@ -235,7 +235,7 @@ For redirected output:
 For JSON:
 
 ```sh
-./bin/soundprobe run --targets nju-campus --family dual --no-save --json > /tmp/run.json
+./bin/pace run --targets nju-campus --family dual --no-save --json > /tmp/run.json
 python3 -m json.tool /tmp/run.json
 ```
 
@@ -246,7 +246,7 @@ The file must contain exactly one JSON document.
 Start a multi-target plan and press Ctrl-C during an active target:
 
 ```sh
-./bin/soundprobe run --targets nju-campus,mlab --family dual
+./bin/pace run --targets nju-campus,mlab --family dual
 ```
 
 Expected exit code: `130`. The active target is cancelled, every later target is
@@ -257,7 +257,7 @@ skipped, and no later helper starts.
 Save a labeled multi-target run:
 
 ```sh
-./bin/soundprobe run \
+./bin/pace run \
   --targets nju-campus,mlab \
   --family ipv4 \
   --label daily \
@@ -267,9 +267,9 @@ Save a labeled multi-target run:
 Read it back:
 
 ```sh
-./bin/soundprobe last --json
-./bin/soundprobe history --limit 10
-./bin/soundprobe show RUN_ID --json
+./bin/pace last --json
+./bin/pace history --limit 10
+./bin/pace show RUN_ID --json
 ```
 
 Verify `targets` matches measurement order. Existing 0.1 history files without
@@ -278,8 +278,8 @@ Verify `targets` matches measurement order. Existing 0.1 history files without
 Export:
 
 ```sh
-./bin/soundprobe export --format jsonl --output /tmp/soundprobe.jsonl
-./bin/soundprobe export --format csv --output /tmp/soundprobe.csv
+./bin/pace export --format jsonl --output /tmp/pace.jsonl
+./bin/pace export --format csv --output /tmp/pace.csv
 ```
 
 JSONL contains one run per line. CSV contains one row per measurement; a run with
@@ -288,8 +288,8 @@ five targets produces five data rows.
 Permission checks:
 
 ```sh
-stat -f '%Sp %N' "$HOME/Library/Application Support/soundprobe/history/v1"
-stat -f '%Sp %N' "$HOME/Library/Application Support/soundprobe/history/v1/"*.json
+stat -f '%Sp %N' "$HOME/Library/Application Support/pace/history/v1"
+stat -f '%Sp %N' "$HOME/Library/Application Support/pace/history/v1/"*.json
 ```
 
 Expected:
@@ -304,12 +304,12 @@ files:     -rw-------
 On supported macOS arm64 versions:
 
 ```sh
-brew style Formula/soundprobe.rb
-brew audit --strict --new --formula soundadam/tap/soundprobe
-HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source soundadam/tap/soundprobe
-brew test soundadam/tap/soundprobe
-soundprobe version
-soundprobe doctor --json
+brew style Formula/pace.rb
+brew audit --strict --new --formula soundadam/tap/pace
+HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source soundadam/tap/pace
+brew test soundadam/tap/pace
+pace version
+pace doctor --json
 ```
 
 Formula tests remain offline and do not invoke the selector, station probes, or

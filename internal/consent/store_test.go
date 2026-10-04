@@ -40,29 +40,3 @@ func TestAcceptStatusAndRevoke(t *testing.T) {
 		t.Fatalf("Status() after revoke = accepted %v, error %v", accepted, err)
 	}
 }
-
-func TestDefaultPathPreservesLegacyConsent(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", "")
-	t.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacy := filepath.Join(configDir, "njuprobe", "consent.json")
-	if err := os.MkdirAll(filepath.Dir(legacy), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(legacy, []byte("{}\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	path, err := DefaultPath()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if path != legacy {
-		t.Fatalf("DefaultPath() = %q, want legacy %q", path, legacy)
-	}
-}

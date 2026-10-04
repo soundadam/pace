@@ -1,18 +1,18 @@
-# soundprobe
+# pace
 
-**教育网优先的跨平台网络路径测量 CLI**——多视角、不打分、诚实数据。
+**给代理、校园内网、CERNET 测速的命令行工具**——多视角、不打分、诚实数据。
 
-[![CI](https://github.com/soundadam/soundprobe/actions/workflows/ci.yml/badge.svg)](https://github.com/soundadam/soundprobe/actions/workflows/ci.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/soundadam/soundprobe.svg)](https://pkg.go.dev/github.com/soundadam/soundprobe)
-[![Release](https://img.shields.io/github/v/release/soundadam/soundprobe)](https://github.com/soundadam/soundprobe/releases)
+[![CI](https://github.com/soundadam/pace/actions/workflows/ci.yml/badge.svg)](https://github.com/soundadam/pace/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/soundadam/pace.svg)](https://pkg.go.dev/github.com/soundadam/pace)
+[![Release](https://img.shields.io/github/v/release/soundadam/pace)](https://github.com/soundadam/pace/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-soundprobe 不把不同线路压成一个"网络分数"，而是按顺序回答几个清楚的
+pace 不把不同线路压成一个"网络分数"，而是按顺序回答几个清楚的
 问题：南大校园网或校园 VPN 是否通、公网出口表现如何、负载下网络是否
 仍有响应，以及附近的运营商侧参考服务器表现如何。支持 macOS、Linux 和
 Windows，Go 编写，终端界面基于 Bubble Tea 内联渲染。
 
-## 为什么是 soundprobe
+## 为什么是 pace
 
 - **多视角，不打分**：每个目标独立回答一个问题；不同目标的结果永远
   不会被替换、排名或折算成综合分数。
@@ -23,14 +23,14 @@ Windows，Go 编写，终端界面基于 Bubble Tea 内联渲染。
 - **JSON 自动化**：全局 `--json` 输出单个无 ANSI 文档，退出码稳定，
   历史可导出 JSONL/CSV。
 - **隐私 fail-closed**：M-Lab 测试要求显式接受其隐私政策，无同意记录
-  时非交互命令直接失败；soundprobe 自身无遥测、无 ASN/地理定位。
+  时非交互命令直接失败；pace 自身无遥测、无 ASN/地理定位。
 
 ## 终端演示
 
 ```text
-$ soundprobe run --targets nju-campus,mlab,apple --family ipv4
+$ pace run --targets nju-campus,mlab,apple --family ipv4
 
-soundprobe v0.4.0 · success · 34.2s
+pace v0.4.0 · success · 34.2s
 Run 8f3c1a2b
 Network en0 · wifi · NJU-WLAN
 TARGET                METHOD                   DOWNLOAD     UPLOAD      SERVER                       STATUS
@@ -46,14 +46,14 @@ Apple networkQuality  apple-networkquality     486.20 Mbps  88.31 Mbps  —     
 
 ```sh
 brew tap soundadam/tap
-brew install soundprobe
-soundprobe doctor --json
-soundprobe
+brew install pace
+pace doctor --json
+pace
 ```
 
 首次在交互终端运行会选择语言与日常测速站（macOS 默认预选
 `nju-campus`、`mlab`、`apple`；Linux/Windows 预选 `nju-campus`、
-`mlab`），之后可用 `soundprobe setup` 修改。Homebrew Formula 当前只
+`mlab`），之后可用 `pace setup` 修改。Homebrew Formula 当前只
 覆盖 macOS；Linux/Windows 使用 release 二进制或源码构建，详见
 [安装文档](docs/getting-started/installation.mdx)。
 
@@ -73,21 +73,21 @@ HTTP 请求，不是三条物理线路，也不表示服务器带宽异常大。
 bulk-transport；两种方法的数值不应直接横向排名。
 
 所有选中目标按显示顺序串行执行，避免互相争抢带宽。Ookla 不自动加入：
-只有在 `soundprobe setup` 中主动选择且官方 helper 可用时才运行。
+只有在 `pace setup` 中主动选择且官方 helper 可用时才运行。
 
 ## CLI 一览
 
 ```sh
-soundprobe
-soundprobe run [--targets LIST] [--family ipv4|ipv6|dual] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe campus [--ipv4|--ipv6] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe domestic [--targets tongji] [--family ipv4] [--no-save]
-soundprobe mlab | apple | ookla [--label TEXT] [--note TEXT] [--no-save]
-soundprobe stations [--json]
-soundprobe history [--limit N] | last [--json] | show RUN_ID [--json]
-soundprobe export --format jsonl|csv --output PATH
-soundprobe consent status|accept|revoke
-soundprobe setup | doctor [--json] | version
+pace
+pace run [--targets LIST] [--family ipv4|ipv6|dual] [--label TEXT] [--note TEXT] [--no-save]
+pace campus [--ipv4|--ipv6] [--label TEXT] [--note TEXT] [--no-save]
+pace domestic [--targets tongji] [--family ipv4] [--no-save]
+pace mlab | apple | ookla [--label TEXT] [--note TEXT] [--no-save]
+pace stations [--json]
+pace history [--limit N] | last [--json] | show RUN_ID [--json]
+pace export --format jsonl|csv --output PATH
+pace consent status|accept|revoke
+pace setup | doctor [--json] | version
 ```
 
 退出码稳定：`0` 全部成功，`1` 配置/环境错误，`2` 目标失败或部分成功，
@@ -96,12 +96,12 @@ soundprobe setup | doctor [--json] | version
 ## 文档
 
 文档站源文件在 [`docs/`](docs/)（Mintlify），线上地址计划为
-<https://docs.soundadam.com>（或 `soundprobe.mintlify.app`，域名待绑定）：
+<https://docs.soundadam.com>（或 `pace.mintlify.app`，域名待绑定）：
 
 - 科普：[网络测速在测什么](docs/concepts/what-speed-tests-measure.mdx) ·
   [为什么不同工具测出的数字不一样](docs/concepts/why-results-differ.mdx) ·
-  [如何读懂 soundprobe 的结果](docs/concepts/reading-results.mdx)
-- 定位：[soundprobe 的定位](docs/positioning/philosophy.mdx) ·
+  [如何读懂 pace 的结果](docs/concepts/reading-results.mdx)
+- 定位：[pace 的定位](docs/positioning/philosophy.mdx) ·
   [与其他工具对比](docs/positioning/comparison.mdx)
 - 参考：[CLI](docs/reference/cli.mdx) ·
   [JSON 与自动化](docs/reference/json-and-automation.mdx) ·
@@ -111,16 +111,16 @@ soundprobe setup | doctor [--json] | version
 
 ## 安装与可选 provider（要点）
 
-- 基础测量依赖 soundprobe 发布的 LibreSpeed/ndt7 helper；缺少 helper 时
+- 基础测量依赖 pace 发布的 LibreSpeed/ndt7 helper；缺少 helper 时
   `doctor` 明确报告，**不下载未知程序**。
-- Apple `networkQuality` 是 macOS 自带组件，soundprobe 只调用、不捆绑、
+- Apple `networkQuality` 是 macOS 自带组件，pace 只调用、不捆绑、
   不代用户接受条款。
 - Ookla 仅支持**官方** Speedtest CLI，由用户自行安装
   （`brew tap teamookla/speedtest && brew install speedtest --force`）；
-  soundprobe 不自动安装、不自动传 `--accept-license`/`--accept-gdpr`，
+  pace 不自动安装、不自动传 `--accept-license`/`--accept-gdpr`，
   并拒绝已停维护的 Python `speedtest-cli`（可用
-  `SOUNDPROBE_OOKLA_PATH` 指定官方二进制）。
-- 交互式 `soundprobe ookla` 检测到冲突时，仅在用户按 Enter 确认后执行
+  `PACE_OOKLA_PATH` 指定官方二进制）。
+- 交互式 `pace ookla` 检测到冲突时，仅在用户按 Enter 确认后执行
   官方 Homebrew 安装序列，且从不自动卸载已有 formula。
 
 细节（冲突修复、helper 解析顺序、平台目录）见
@@ -129,11 +129,11 @@ soundprobe setup | doctor [--json] | version
 ## M-Lab 隐私（要点）
 
 M-Lab 会公开并无限期保留测试结果和 ISP 提供的公网 IP（[隐私政策](https://www.measurementlab.net/privacy/)）。
-soundprobe 要求显式同意且 fail closed：
+pace 要求显式同意且 fail closed：
 
 ```sh
-soundprobe consent accept
-soundprobe consent status
+pace consent accept
+pace consent status
 ```
 
 无同意记录时，非交互命令在接触 M-Lab 前以 `consent_required` 失败；
@@ -147,9 +147,9 @@ soundprobe consent status
 永久保存在用户配置目录（目录 `0700`、文件 `0600`、原子写入）：
 
 ```text
-macOS:   ~/Library/Application Support/soundprobe/history/v1/<run-id>.json
-Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v1/<run-id>.json
-Windows: %AppData%\soundprobe\history\v1\<run-id>.json
+macOS:   ~/Library/Application Support/pace/history/v1/<run-id>.json
+Linux:   ${XDG_CONFIG_HOME:-~/.config}/pace/history/v1/<run-id>.json
+Windows: %AppData%\pace\history\v1\<run-id>.json
 ```
 
 `export --format jsonl|csv` 导出全部历史。字段表与脚本示例见
@@ -161,7 +161,7 @@ Windows: %AppData%\soundprobe\history\v1\<run-id>.json
 make test-offline   # 全部离线测试（fixtures/mock helper）
 make test-race
 make build
-./bin/soundprobe version
+./bin/pace version
 ```
 
 测试、Formula 与 release automation 只使用 fixtures/mock helper，常规
@@ -171,11 +171,11 @@ CI 不执行真实带宽测试；真实测速由对应平台操作者单独验�
 
 ## 许可与第三方
 
-- soundprobe 本体：**MIT**（见 [LICENSE](LICENSE)）。
+- pace 本体：**MIT**（见 [LICENSE](LICENSE)）。
 - `librespeed-cli` helper：**LGPL-3.0-only**，维护源码在
   `components/librespeed-cli`，作为独立进程执行、不静态链接。
 - `ndt7-client` helper：**Apache-2.0**，按固定版本与 SHA-256 构建。
-- soundprobe **从不代替用户接受任何第三方条款**（Apple、Ookla、M-Lab
+- pace **从不代替用户接受任何第三方条款**（Apple、Ookla、M-Lab
   的条款由用户自己面对），也不读取或修改 soundVPN、SFM、NJUConnect
   的私有配置。
 
@@ -185,7 +185,7 @@ CI 不执行真实带宽测试；真实测速由对应平台操作者单独验�
 ## 命名约定
 
 产品名、仓库名、Homebrew Formula、可执行文件、TUI 标题和 CLI 输出均
-保持小写 `soundprobe`。Go 模块路径保持 `github.com/soundadam/soundprobe`。
+保持小写 `pace`。Go 模块路径保持 `github.com/soundadam/pace`。
 
 ## Contributing
 

@@ -2,7 +2,7 @@
 set -eu
 
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-TEMPLATE="$ROOT/packaging/homebrew/soundprobe.rb.tmpl"
+TEMPLATE="$ROOT/packaging/homebrew/pace.rb.tmpl"
 
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
   echo "usage: $0 VERSION SOURCE_SHA256 [OUTPUT]" >&2
@@ -11,7 +11,7 @@ fi
 
 version=${1#v}
 source_sha256=$2
-output=${3:-"$ROOT/dist/Formula/soundprobe.rb"}
+output=${3:-"$ROOT/dist/Formula/pace.rb"}
 
 validate_version() {
   candidate=$1

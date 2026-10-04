@@ -12,7 +12,7 @@ func HomebrewInstallCommands() [][]string {
 	}
 }
 
-// HomebrewConflictCommands are intentionally not executed by soundprobe.
+// HomebrewConflictCommands are intentionally not executed by pace.
 // Removing formulas is destructive and may remove a user's unrelated tool;
 // these commands are shown only as a manual recovery option if installation
 // reports a file/formula conflict.

@@ -8,8 +8,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/provider"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/provider"
 )
 
 func TestProgressModelRendersEqualProviderPanels(t *testing.T) {
@@ -41,7 +41,7 @@ func TestProgressModelRendersEqualProviderPanels(t *testing.T) {
 
 	view := progress.View().Content
 	for _, expected := range []string{
-		"soundprobe",
+		"pace",
 		"Network  en0 · wifi · NJU-WLAN",
 		"Order    NJU Campus · IPv4 → M-Lab · sequential",
 		"NJU Campus · IPv4",

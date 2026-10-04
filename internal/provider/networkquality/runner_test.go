@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/provider"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/provider"
 )
 
 func TestRunnerPreflightAndMeasureBindInterface(t *testing.T) {
@@ -22,8 +22,8 @@ func TestRunnerPreflightAndMeasureBindInterface(t *testing.T) {
 	path := filepath.Join(root, "networkQuality")
 	script := "#!/bin/sh\n" +
 		"if [ \"${1:-}\" = \"-h\" ]; then echo 'networkQuality help'; exit 0; fi\n" +
-		"printf '%s\\n' \"$*\" > \"$SOUNDPROBE_ARGS\"\n" +
-		"cat \"$SOUNDPROBE_FIXTURE\"\n"
+		"printf '%s\\n' \"$*\" > \"$PACE_ARGS\"\n" +
+		"cat \"$PACE_FIXTURE\"\n"
 	if err := os.WriteFile(path, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -31,8 +31,8 @@ func TestRunnerPreflightAndMeasureBindInterface(t *testing.T) {
 	if err := os.WriteFile(fixturePath, fixture, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SOUNDPROBE_ARGS", argsPath)
-	t.Setenv("SOUNDPROBE_FIXTURE", fixturePath)
+	t.Setenv("PACE_ARGS", argsPath)
+	t.Setenv("PACE_FIXTURE", fixturePath)
 	runner := &Runner{Path: path}
 	if err := runner.Preflight(context.Background(), provider.Request{}); err != nil {
 		t.Fatal(err)

@@ -2,7 +2,7 @@
 set -eu
 
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-BINARY="$ROOT/bin/soundprobe"
+BINARY="$ROOT/bin/pace"
 CAMPUS_FIXTURE="$ROOT/internal/provider/campus/testdata/librespeed-success-ipv4.json"
 MLAB_SUCCESS_FIXTURE="$ROOT/internal/provider/mlab/testdata/ndt7-success.jsonl"
 MLAB_FAILURE_FIXTURE="$ROOT/internal/provider/mlab/testdata/ndt7-upload-failure.jsonl"
@@ -10,20 +10,20 @@ MLAB_FAILURE_FIXTURE="$ROOT/internal/provider/mlab/testdata/ndt7-upload-failure.
 mkdir -p "$ROOT/bin"
 (
   cd "$ROOT"
-  GOTOOLCHAIN=auto go build -o "$BINARY" ./cmd/soundprobe
+  GOTOOLCHAIN=auto go build -o "$BINARY" ./cmd/pace
 )
 
-workdir=$(mktemp -d "${TMPDIR:-/tmp}/soundprobe-run-fixture.XXXXXX")
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/pace-run-fixture.XXXXXX")
 cleanup() {
   rm -rf "$workdir"
 }
 trap cleanup EXIT HUP INT TERM
 
-helper_dir="$workdir/app/libexec/soundprobe"
+helper_dir="$workdir/app/libexec/pace"
 ookla_bin="$workdir/ookla-bin"
 bad_ookla_bin="$workdir/bad-ookla-bin"
 mkdir -p "$workdir/app/bin" "$helper_dir" "$ookla_bin" "$bad_ookla_bin" "$workdir/home" "$workdir/work"
-cp "$BINARY" "$workdir/app/bin/soundprobe"
+cp "$BINARY" "$workdir/app/bin/pace"
 
 cat > "$helper_dir/librespeed-cli" <<EOF
 #!/bin/sh
@@ -31,8 +31,8 @@ if [ "\${1:-}" = "--version" ]; then
   printf 'librespeed-cli v1.0.13-campus.1 (built on fixture)\n'
   exit 0
 fi
-if [ -n "\${SOUNDPROBE_FIXTURE_DELAY:-}" ]; then
-  sleep "\$SOUNDPROBE_FIXTURE_DELAY"
+if [ -n "\${PACE_FIXTURE_DELAY:-}" ]; then
+  sleep "\$PACE_FIXTURE_DELAY"
 fi
 printf '%s\n' '{"type":"progress","test":"download","elapsed_ms":1000,"bytes":6250000,"mbps":50}' >&2
 printf '%s\n' '{"type":"progress","test":"upload","elapsed_ms":1000,"bytes":625000,"mbps":5}' >&2
@@ -42,10 +42,10 @@ chmod 0755 "$helper_dir/librespeed-cli"
 
 cat > "$helper_dir/ndt7-client" <<EOF
 #!/bin/sh
-if [ -n "\${SOUNDPROBE_FIXTURE_DELAY:-}" ]; then
-  sleep "\$SOUNDPROBE_FIXTURE_DELAY"
+if [ -n "\${PACE_FIXTURE_DELAY:-}" ]; then
+  sleep "\$PACE_FIXTURE_DELAY"
 fi
-if [ "\${SOUNDPROBE_NDT7_FIXTURE:-success}" = "failure" ]; then
+if [ "\${PACE_NDT7_FIXTURE:-success}" = "failure" ]; then
   cat "$MLAB_FAILURE_FIXTURE"
   exit 1
 fi
@@ -95,8 +95,8 @@ chmod 0755 "$bad_ookla_bin/speedtest"
 XDG_CONFIG_HOME="$workdir/home/.config"
 export XDG_CONFIG_HOME
 for consent_dir in \
-  "$workdir/home/Library/Application Support/soundprobe" \
-  "$XDG_CONFIG_HOME/soundprobe"; do
+  "$workdir/home/Library/Application Support/pace" \
+  "$XDG_CONFIG_HOME/pace"; do
   mkdir -p "$consent_dir"
   cat > "$consent_dir/consent.json" <<'EOF'
 {
@@ -115,8 +115,8 @@ run_command() {
   shift
   (
     cd "$workdir/work"
-    HOME="$workdir/home" PATH="$ookla_bin:$PATH" SOUNDPROBE_OOKLA_PATH="$ookla_bin/speedtest" SOUNDPROBE_NETWORKQUALITY_PATH="$helper_dir/networkQuality" \
-      "$workdir/app/bin/soundprobe" "$@"
+    HOME="$workdir/home" PATH="$ookla_bin:$PATH" PACE_OOKLA_PATH="$ookla_bin/speedtest" PACE_NETWORKQUALITY_PATH="$helper_dir/networkQuality" \
+      "$workdir/app/bin/pace" "$@"
   ) > "$output"
 }
 
@@ -125,15 +125,15 @@ run_command "$workdir/success.json" run --no-save --json
 
 (
   cd "$workdir/work"
-  HOME="$workdir/home" PATH="$bad_ookla_bin:$PATH" SOUNDPROBE_OOKLA_PATH="$bad_ookla_bin/speedtest" SOUNDPROBE_NETWORKQUALITY_PATH="$helper_dir/networkQuality" \
-    "$workdir/app/bin/soundprobe" run --targets nju-campus,mlab,apple,ookla --no-save --json
+  HOME="$workdir/home" PATH="$bad_ookla_bin:$PATH" PACE_OOKLA_PATH="$bad_ookla_bin/speedtest" PACE_NETWORKQUALITY_PATH="$helper_dir/networkQuality" \
+    "$workdir/app/bin/pace" run --targets nju-campus,mlab,apple,ookla --no-save --json
 ) > "$workdir/python-speedtest.json"
 
 set +e
 (
   cd "$workdir/work"
-  HOME="$workdir/home" PATH="$ookla_bin:$PATH" SOUNDPROBE_OOKLA_PATH="$ookla_bin/speedtest" SOUNDPROBE_NETWORKQUALITY_PATH="$helper_dir/networkQuality" SOUNDPROBE_NDT7_FIXTURE=failure \
-    "$workdir/app/bin/soundprobe" run --no-save --json
+  HOME="$workdir/home" PATH="$ookla_bin:$PATH" PACE_OOKLA_PATH="$ookla_bin/speedtest" PACE_NETWORKQUALITY_PATH="$helper_dir/networkQuality" PACE_NDT7_FIXTURE=failure \
+    "$workdir/app/bin/pace" run --no-save --json
 ) > "$workdir/partial.json"
 partial_exit=$?
 set -e
@@ -212,14 +212,14 @@ env = os.environ.copy()
 env.update({
     "HOME": str(root / "home"),
     "PATH": str(root / "ookla-bin") + os.pathsep + env["PATH"],
-    "SOUNDPROBE_NETWORKQUALITY_PATH": str(root / "app" / "libexec" / "soundprobe" / "networkQuality"),
-    "SOUNDPROBE_FIXTURE_DELAY": "0.15",
+    "PACE_NETWORKQUALITY_PATH": str(root / "app" / "libexec" / "pace" / "networkQuality"),
+    "PACE_FIXTURE_DELAY": "0.15",
     "TERM": "xterm-256color",
 })
 master, slave = pty.openpty()
 fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 120, 0, 0))
 process = subprocess.Popen(
-    [str(root / "app/bin/soundprobe"), "run", "--no-save"],
+    [str(root / "app/bin/pace"), "run", "--no-save"],
     stdin=slave,
     stdout=slave,
     stderr=slave,

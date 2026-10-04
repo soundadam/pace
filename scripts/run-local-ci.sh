@@ -28,7 +28,7 @@ fetch() {
 
 apt_get_with_lock_retry() {
   attempts=0
-  log_file=$(mktemp "${TMPDIR:-/tmp}/soundprobe-apt.XXXXXX")
+  log_file=$(mktemp "${TMPDIR:-/tmp}/pace-apt.XXXXXX")
 
   while :; do
     attempts=$((attempts + 1))
@@ -68,7 +68,7 @@ install_exact_go_archive() {
       exit 1
     }
 
-    workdir=$(mktemp -d "${TMPDIR:-/tmp}/soundprobe-go.XXXXXX")
+    workdir=$(mktemp -d "${TMPDIR:-/tmp}/pace-go.XXXXXX")
     cleanup() {
       rm -rf "$workdir"
     }

@@ -43,7 +43,7 @@ func (resolver Resolver) Resolve(name string) (Resolved, error) {
 	if err != nil {
 		return Resolved{}, err
 	}
-	libexecPath := filepath.Clean(filepath.Join(filepath.Dir(executablePath), "..", "libexec", "soundprobe", name))
+	libexecPath := filepath.Clean(filepath.Join(filepath.Dir(executablePath), "..", "libexec", "pace", name))
 	if resolved, exists, err := resolveCandidate(libexecPath, SourceLibexec); err != nil {
 		return Resolved{}, err
 	} else if exists {
@@ -88,16 +88,16 @@ func (resolver Resolver) executablePath() (string, error) {
 		var err error
 		path, err = os.Executable()
 		if err != nil {
-			return "", fmt.Errorf("resolve soundprobe executable: %w", err)
+			return "", fmt.Errorf("resolve pace executable: %w", err)
 		}
 	}
 	absolute, err := filepath.Abs(path)
 	if err != nil {
-		return "", fmt.Errorf("resolve soundprobe executable path: %w", err)
+		return "", fmt.Errorf("resolve pace executable path: %w", err)
 	}
 	resolved, err := filepath.EvalSymlinks(absolute)
 	if err != nil {
-		return "", fmt.Errorf("resolve soundprobe executable symlinks: %w", err)
+		return "", fmt.Errorf("resolve pace executable symlinks: %w", err)
 	}
 	return resolved, nil
 }
@@ -144,7 +144,7 @@ func repositoryRoots(paths ...string) []string {
 	var roots []string
 	for _, path := range paths {
 		for directory := path; ; directory = filepath.Dir(directory) {
-			if isSoundprobeModule(directory) {
+			if isPaceModule(directory) {
 				if _, exists := seen[directory]; !exists {
 					seen[directory] = struct{}{}
 					roots = append(roots, directory)
@@ -160,12 +160,12 @@ func repositoryRoots(paths ...string) []string {
 	return roots
 }
 
-func isSoundprobeModule(directory string) bool {
+func isPaceModule(directory string) bool {
 	data, err := os.ReadFile(filepath.Join(directory, "go.mod"))
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(data), "module github.com/soundadam/soundprobe")
+	return strings.Contains(string(data), "module github.com/soundadam/pace")
 }
 
 // ReadVersionManifest reads the required sidecar version for helpers that do

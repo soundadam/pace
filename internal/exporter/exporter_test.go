@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/pace/internal/model"
 )
 
 func TestWriteJSONL(t *testing.T) {

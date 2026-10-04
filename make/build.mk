@@ -1,5 +1,5 @@
 build:
-	GOTOOLCHAIN=$(GOTOOLCHAIN) $(GO) build -o $(BINARY) ./cmd/soundprobe
+	GOTOOLCHAIN=$(GOTOOLCHAIN) $(GO) build -o $(BINARY) ./cmd/pace
 
 verify-mod:
 	GOTOOLCHAIN=$(GOTOOLCHAIN) $(GO) mod verify

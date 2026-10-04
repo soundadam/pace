@@ -1,11 +1,11 @@
 ---
-title: "soundprobe 是什么"
+title: "pace 是什么"
 sidebarTitle: "介绍"
-description: "教育网优先的跨平台网络路径测量 CLI：多视角、不打分、诚实数据"
+description: "给代理、校园内网、CERNET 测速的命令行工具：多视角、不打分、诚实数据"
 icon: "compass"
 ---
 
-soundprobe 是一款开源（MIT）、教育网优先的跨平台网络路径测量工具，用 Go
+pace 是一款开源（MIT）、教育网优先的跨平台网络路径测量工具，用 Go
 编写，支持 macOS、Linux 和 Windows。它在终端里运行，交互界面基于
 Bubble Tea 内联渲染，也可以完全脚本化地输出 JSON。
 
@@ -31,7 +31,7 @@ Bubble Tea 内联渲染，也可以完全脚本化地输出 JSON。
   横向排名（详见[为什么不同工具测出的数字不一样](/concepts/why-results-differ)）；
 - 工具显示一个"评分"，但你不知道它意味着什么，也无法用它排障。
 
-soundprobe 的回答是：把每个视角的原始测量结果如实呈现，明确标注方法边界，
+pace 的回答是：把每个视角的原始测量结果如实呈现，明确标注方法边界，
 让"数字不一样"从困惑变成信息。
 
 ## 设计原则
@@ -53,7 +53,7 @@ soundprobe 的回答是：把每个视角的原始测量结果如实呈现，明
   </Card>
   <Card title="隐私 fail-closed" icon="lock">
     M-Lab 测试要求显式接受其隐私政策；没有同意记录时非交互命令直接
-    失败，不接触 M-Lab。soundprobe 自身没有任何遥测。
+    失败，不接触 M-Lab。pace 自身没有任何遥测。
   </Card>
   <Card title="不越界" icon="hand">
     无守护进程、无账号、无云同步、无自动调度；不代替用户接受任何
@@ -66,9 +66,9 @@ soundprobe 的回答是：把每个视角的原始测量结果如实呈现，明
 - [快速开始](/getting-started/quickstart)：从 `brew install` 到第一次测速。
 - [网络测速在测什么](/concepts/what-speed-tests-measure)：理解带宽、延迟、
   抖动、丢包与负载下响应性。
-- [soundprobe 的定位](/positioning/philosophy)：它做什么、不做什么。
+- [pace 的定位](/positioning/philosophy)：它做什么、不做什么。
 
 <Note>
 产品名、仓库名、Homebrew Formula、可执行文件、TUI 标题和 CLI 输出均
-保持小写 `soundprobe`。
+保持小写 `pace`。
 </Note>

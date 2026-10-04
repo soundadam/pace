@@ -15,7 +15,7 @@ version and SHA-256. Go library dependencies are locked by `go.mod` and
 - Source archive SHA-256:
   `5ad938b61e3edc0ca95e2ccff0c06e97a69383f3cbb0243bd47b21b9865f9f55`
 - License: GNU Lesser General Public License v3.0
-- Installed executable: `libexec/soundprobe/librespeed-cli`
+- Installed executable: `libexec/pace/librespeed-cli`
 
 The complete maintained source is in `components/librespeed-cli`. It adds
 structured progress and explicit loopback SOCKS5 support while preserving the
@@ -32,28 +32,28 @@ license.
 - Source archive SHA-256:
   `31b40268bd7a9d31bdb5507b7ade2fad2efb8abb9e7339d2f59e9cdee5340bef`
 - License: Apache License 2.0
-- Installed executable: `libexec/soundprobe/ndt7-client`
+- Installed executable: `libexec/pace/ndt7-client`
 
-soundprobe consumes the helper's JSON event stream and identifies the client as
-`soundprobe`. Because the upstream CLI has no version-reporting command, packaging
+pace consumes the helper's JSON event stream and identifies the client as
+`pace`. Because the upstream CLI has no version-reporting command, packaging
 installs `ndt7-client.version` containing `v0.10.1`; runtime preflight verifies
 that sidecar before a test. The Homebrew Formula installs the upstream license.
 
 ## Apple networkQuality
 
 Apple's `/usr/bin/networkQuality` is an operating-system-provided executable on
-macOS. soundprobe does not redistribute it, link against it, or accept terms on
+macOS. pace does not redistribute it, link against it, or accept terms on
 the user's behalf. Product documentation links to Apple's public NetworkQuality
 explanation.
 
 ## Ookla Speedtest CLI
 
 The official Ookla `speedtest` CLI is an optional user-installed executable. It
-is not bundled, downloaded, or a Homebrew Formula dependency of soundprobe.
-soundprobe validates the executable identity and refuses the unrelated Python
+is not bundled, downloaded, or a Homebrew Formula dependency of pace.
+pace validates the executable identity and refuses the unrelated Python
 `speedtest-cli`. Ookla licensing and any first-run license/GDPR acceptance remain
-between the user and Ookla; soundprobe never passes acceptance flags
-automatically. In an explicit interactive command, soundprobe may display the
+between the user and Ookla; pace never passes acceptance flags
+automatically. In an explicit interactive command, pace may display the
 official Homebrew installation commands after a preflight failure, but executes
 them only after Enter and never runs uninstall commands. See
 <https://www.speedtest.net/apps/cli> for official distribution and terms.

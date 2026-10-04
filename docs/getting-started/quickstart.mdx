@@ -11,12 +11,12 @@ icon: "rocket"
   <Step title="安装">
     ```sh
     brew tap soundadam/tap
-    brew install soundprobe
+    brew install pace
     ```
   </Step>
   <Step title="检查环境">
     ```sh
-    soundprobe doctor --json
+    pace doctor --json
     ```
 
     `doctor` 会报告核心 provider（`campus`、`mlab`）与可选 provider
@@ -28,12 +28,12 @@ icon: "rocket"
     在交互终端里直接运行：
 
     ```sh
-    soundprobe
+    pace
     ```
 
     第一次运行会让你选择界面语言（中文 / English）和日常测速站。
     macOS 默认预选 `nju-campus`、`mlab`、`apple`；Linux/Windows 默认预选
-    `nju-campus`、`mlab`。以后可随时用 `soundprobe setup` 修改。
+    `nju-campus`、`mlab`。以后可随时用 `pace setup` 修改。
 
     选择器只做轻量 DNS/连接探测，不会提前执行带宽测试。快捷键：
 
@@ -48,12 +48,12 @@ icon: "rocket"
   </Step>
   <Step title="M-Lab 隐私同意（若计划包含 M-Lab）">
     M-Lab 会公开并无限期保留测试结果和 ISP 提供的公网 IP。第一次运行
-    包含 M-Lab 的计划时，soundprobe 会展示政策并要求你输入 `accept`；
+    包含 M-Lab 的计划时，pace 会展示政策并要求你输入 `accept`；
     也可以提前完成：
 
     ```sh
-    soundprobe consent accept
-    soundprobe consent status
+    pace consent accept
+    pace consent status
     ```
 
     没有同意记录时，非交互命令在接触 M-Lab 前直接以
@@ -68,14 +68,14 @@ icon: "rocket"
     也可以跳过选择器直接跑：
 
     ```sh
-    soundprobe run --targets nju-campus,mlab --family ipv4
+    pace run --targets nju-campus,mlab --family ipv4
     ```
   </Step>
   <Step title="查看与导出结果">
     ```sh
-    soundprobe last --json
-    soundprobe history --limit 20
-    soundprobe export --format jsonl --output /tmp/soundprobe.jsonl
+    pace last --json
+    pace history --limit 20
+    pace export --format jsonl --output /tmp/pace.jsonl
     ```
 
     每次结果默认永久保存在用户配置目录（可用 `--no-save` 关闭），
@@ -88,4 +88,4 @@ icon: "rocket"
 不同目标的数字**不应互相排名**：NJU Campus 走的是校内路径，M-Lab 走公网
 出口，两者的方法（LibreSpeed 三并发流 vs NDT7 单流）也不同。每个目标
 回答的问题以及失败/skipped 状态的含义，见
-[如何读懂 soundprobe 的结果](/concepts/reading-results)。
+[如何读懂 pace 的结果](/concepts/reading-results)。

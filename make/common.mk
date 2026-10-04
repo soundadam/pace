@@ -1,4 +1,4 @@
-BINARY := bin/soundprobe
+BINARY := bin/pace
 GO ?= go
 GOTOOLCHAIN ?= auto
 

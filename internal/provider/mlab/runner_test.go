@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/helper"
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/provider"
+	"github.com/soundadam/pace/internal/helper"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/provider"
 )
 
 func TestRunnerMeasuresWithExactArguments(t *testing.T) {
@@ -28,7 +28,7 @@ func TestRunnerMeasuresWithExactArguments(t *testing.T) {
 	got := readArgs(t, argsPath)
 	want := []string{
 		"-format=json",
-		"-client-name=soundprobe",
+		"-client-name=pace",
 		"-timeout=55s",
 		"-scheme=wss",
 		"-download=true",
@@ -60,7 +60,7 @@ func TestRunnerReturnsProviderFailureFromNonzeroHelper(t *testing.T) {
 
 func TestRunnerTimesOut(t *testing.T) {
 	runner, _ := newFakeRunner(t, "", HelperVersion, 0)
-	t.Setenv("SOUNDPROBE_FAKE_SLEEP", "1")
+	t.Setenv("PACE_FAKE_SLEEP", "1")
 	runner.Timeout = 25 * time.Millisecond
 	measurement, err := runner.Measure(context.Background(), provider.Request{Command: model.CommandMLab})
 	if err != nil {
@@ -73,7 +73,7 @@ func TestRunnerTimesOut(t *testing.T) {
 
 func TestRunnerPreservesCancellation(t *testing.T) {
 	runner, _ := newFakeRunner(t, "", HelperVersion, 0)
-	t.Setenv("SOUNDPROBE_FAKE_SLEEP", "5")
+	t.Setenv("PACE_FAKE_SLEEP", "5")
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(25 * time.Millisecond)
@@ -91,8 +91,8 @@ func TestRunnerPreservesCancellation(t *testing.T) {
 func newFakeRunner(t *testing.T, fixture, version string, exitCode int) (*Runner, string) {
 	t.Helper()
 	root := t.TempDir()
-	executable := filepath.Join(root, "prefix", "bin", "soundprobe")
-	helperPath := filepath.Join(root, "prefix", "libexec", "soundprobe", HelperName)
+	executable := filepath.Join(root, "prefix", "bin", "pace")
+	helperPath := filepath.Join(root, "prefix", "libexec", "pace", HelperName)
 	argsPath := filepath.Join(root, "args.txt")
 	writeExecutable(t, executable, "#!/bin/sh\nexit 0\n")
 
@@ -105,9 +105,9 @@ func newFakeRunner(t *testing.T, fixture, version string, exitCode int) (*Runner
 		fixturePath = absolute
 	}
 	script := `#!/bin/sh
-printf '%%s\n' "$@" > "$SOUNDPROBE_FAKE_ARGS"
-if [ -n "${SOUNDPROBE_FAKE_SLEEP:-}" ]; then
-  exec sleep "$SOUNDPROBE_FAKE_SLEEP"
+printf '%%s\n' "$@" > "$PACE_FAKE_ARGS"
+if [ -n "${PACE_FAKE_SLEEP:-}" ]; then
+  exec sleep "$PACE_FAKE_SLEEP"
 fi
 if [ -n "%s" ]; then
   cat "%s"
@@ -119,7 +119,7 @@ exit %d
 	if err := os.WriteFile(helperPath+".version", []byte(version+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SOUNDPROBE_FAKE_ARGS", argsPath)
+	t.Setenv("PACE_FAKE_ARGS", argsPath)
 
 	clock := time.Date(2026, 7, 22, 8, 0, 0, 0, time.UTC)
 	return &Runner{

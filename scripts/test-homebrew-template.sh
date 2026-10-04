@@ -2,13 +2,13 @@
 set -eu
 
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-workdir=$(mktemp -d "${TMPDIR:-/tmp}/soundprobe-formula.XXXXXX")
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/pace-formula.XXXXXX")
 cleanup() {
   rm -rf "$workdir"
 }
 trap cleanup EXIT HUP INT TERM
 
-output="$workdir/soundprobe.rb"
+output="$workdir/pace.rb"
 dummy_sha="0000000000000000000000000000000000000000000000000000000000000000"
 umask 077
 "$ROOT/scripts/render-homebrew-formula.sh" 0.1.0 "$dummy_sha" "$output" >/dev/null
@@ -28,7 +28,7 @@ linked_directory="$workdir/linked-formula-output"
 mkdir "$outside_directory"
 ln -s "$outside_directory" "$linked_directory"
 if "$ROOT/scripts/render-homebrew-formula.sh" \
-  0.1.0 "$dummy_sha" "$linked_directory/soundprobe.rb" >/dev/null 2>&1; then
+  0.1.0 "$dummy_sha" "$linked_directory/pace.rb" >/dev/null 2>&1; then
   echo "test-homebrew-template: renderer accepted a symlinked output directory" >&2
   exit 1
 fi
@@ -115,14 +115,14 @@ else
   printf '%s\n' 'Ruby not installed; syntax check deferred to the macOS Homebrew gate.'
 fi
 
-grep -q 'class Soundprobe < Formula' "$output"
+grep -q 'class Pace < Formula' "$output"
 grep -q 'depends_on "go" => :build' "$output"
 grep -q 'cd "components/librespeed-cli"' "$output"
 grep -q 'resource "ndt7-client"' "$output"
 grep -q 'defs.ProgVersion=v1.0.13-campus.1' "$output"
 grep -q 'assert_match '\''"ready":true' "$output"
-grep -Fq 'homepage "https://github.com/soundadam/soundprobe"' "$output"
-grep -Fq 'url "https://github.com/soundadam/soundprobe/releases/download/v0.1.0/soundprobe-0.1.0.tar.gz"' "$output"
+grep -Fq 'homepage "https://github.com/soundadam/pace"' "$output"
+grep -Fq 'url "https://github.com/soundadam/pace/releases/download/v0.1.0/pace-0.1.0.tar.gz"' "$output"
 if grep -Eq '^[[:space:]]*head ' "$output"; then
   echo "test-homebrew-template: Formula exposes inaccessible private HEAD source" >&2
   exit 1

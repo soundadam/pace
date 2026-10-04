@@ -35,15 +35,7 @@ func DefaultPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve user config directory: %w", err)
 	}
-	current := filepath.Join(configDir, "soundprobe", "consent.json")
-	legacy := filepath.Join(configDir, "njuprobe", "consent.json")
-	if _, err := os.Stat(current); err == nil {
-		return current, nil
-	}
-	if _, err := os.Stat(legacy); err == nil {
-		return legacy, nil
-	}
-	return current, nil
+	return filepath.Join(configDir, "pace", "consent.json"), nil
 }
 
 func (store *Store) Status() (Record, bool, error) {

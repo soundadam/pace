@@ -1,4 +1,4 @@
-# GoReleaser v2 configuration for soundprobe.
+# GoReleaser v2 configuration for pace.
 #
 # Driven by .github/workflows/release.yml on every `v*` tag push. Local dry
 # runs: `make release-check` (validate) and `make snapshot` (full build
@@ -13,9 +13,9 @@
 #   - No step performs a real bandwidth measurement.
 version: 2
 
-project_name: soundprobe
+project_name: pace
 
-# soundprobe itself (the only thing these archives contain) is MIT; the
+# pace itself (the only thing these archives contain) is MIT; the
 # license is stated in the cask caveats below and in the bundled LICENSE.
 metadata:
   mod_timestamp: "{{ .CommitTimestamp }}"
@@ -27,9 +27,9 @@ before:
     - go mod verify
 
 builds:
-  - id: soundprobe
-    main: ./cmd/soundprobe
-    binary: soundprobe
+  - id: pace
+    main: ./cmd/pace
+    binary: pace
     env:
       - CGO_ENABLED=0
     goos:
@@ -42,14 +42,14 @@ builds:
     flags:
       - -trimpath
     # Same injection points as internal/buildinfo/buildinfo.go and the
-    # Homebrew template in packaging/homebrew/soundprobe.rb.tmpl.
+    # Homebrew template in packaging/homebrew/pace.rb.tmpl.
     # CommitDate (not build time) keeps binaries reproducible.
     ldflags:
       - -s
       - -w
-      - -X github.com/soundadam/soundprobe/internal/buildinfo.Version={{ .Version }}
-      - -X github.com/soundadam/soundprobe/internal/buildinfo.Commit={{ .FullCommit }}
-      - -X github.com/soundadam/soundprobe/internal/buildinfo.Date={{ .CommitDate }}
+      - -X github.com/soundadam/pace/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/soundadam/pace/internal/buildinfo.Commit={{ .FullCommit }}
+      - -X github.com/soundadam/pace/internal/buildinfo.Date={{ .CommitDate }}
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
@@ -108,7 +108,7 @@ release:
 # pre-compiled binaries; the source-build Formula path remains available as
 # the manual fallback (packaging/homebrew/, scripts/render-homebrew-formula.sh).
 homebrew_casks:
-  - name: soundprobe
+  - name: pace
     repository:
       owner: soundadam
       name: homebrew-tap
@@ -116,20 +116,20 @@ homebrew_casks:
       # the workflow-provided GITHUB_TOKEN cannot push to another repository.
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     # Casks must live in Casks/ (Homebrew requirement). The manual source
-    # Formula, when published, lives in Formula/soundprobe.rb.
+    # Formula, when published, lives in Formula/pace.rb.
     directory: Casks
-    homepage: https://github.com/soundadam/soundprobe
-    description: Education-network-first macOS network path measurements
+    homepage: https://github.com/soundadam/pace
+    description: Speed tests for proxies, campus intranets and CERNET
     # Do not push prerelease tags (e.g. v1.0.0-rc1) to the tap.
     skip_upload: auto
     caveats: |
-      soundprobe is MIT licensed.
+      pace is MIT licensed.
 
       The optional measurement helpers are separate programs with their own
       licenses and are NOT bundled with this package:
         - librespeed-cli (LGPL-3.0-only)
         - ndt7-client (Apache-2.0)
-      soundprobe never downloads them automatically. Run `soundprobe doctor`
+      pace never downloads them automatically. Run `pace doctor`
       to see which helpers are available on this machine.
     hooks:
       post:
@@ -137,5 +137,5 @@ homebrew_casks:
         # Gatekeeper does not block it (see GoReleaser homebrew_casks docs).
         install: |
           if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/soundprobe"]
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/pace"]
           end

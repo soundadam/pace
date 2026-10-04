@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/consent"
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/preferences"
-	"github.com/soundadam/soundprobe/internal/provider"
-	"github.com/soundadam/soundprobe/internal/storage"
-	"github.com/soundadam/soundprobe/internal/target"
+	"github.com/soundadam/pace/internal/consent"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/preferences"
+	"github.com/soundadam/pace/internal/provider"
+	"github.com/soundadam/pace/internal/storage"
+	"github.com/soundadam/pace/internal/target"
 )
 
 type fakeRunner struct {

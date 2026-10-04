@@ -1,10 +1,10 @@
 ---
-title: "如何读懂 soundprobe 的结果"
+title: "如何读懂 pace 的结果"
 description: "各目标回答什么问题、IPv4/IPv6 的含义，以及失败与 skipped 的语义"
 icon: "book-open"
 ---
 
-soundprobe 的一次运行由若干**目标**（target）组成，按显示顺序串行执行
+pace 的一次运行由若干**目标**（target）组成，按显示顺序串行执行
 ——串行是有意的，避免多个测量互相争抢带宽污染数据。每个目标产生一条
 独立的测量记录。读结果的第一原则：
 
@@ -31,7 +31,7 @@ soundprobe 的一次运行由若干**目标**（target）组成，按显示顺�
   存在 bufferbloat，负载下交互体验会差。参见
   [网络测速在测什么](/concepts/what-speed-tests-measure)。
 - **`ookla` 的 `serverSponsor` 表示测速服务器的运营方**，不是你的接入
-  运营商。soundprobe 不做 ASN、地理定位或客户端运营商识别。
+  运营商。pace 不做 ASN、地理定位或客户端运营商识别。
 - 教育网站点的"三流"是**三个并发 HTTP 请求**，不是三条物理线路；
   NDT7 是单流，两类数值不可直接横向排名，见
   [为什么不同工具测出的数字不一样](/concepts/why-results-differ)。
@@ -71,8 +71,8 @@ soundprobe 的一次运行由若干**目标**（target）组成，按显示顺�
 
 组合运行（如默认的 `nju-campus → mlab → apple`）在执行前会移除不可用
 的**可选** provider（例如 Linux 上没有 Apple helper），并在 stderr 提示
-一行，其余目标照常执行——这不算失败。但**显式**运行 `soundprobe apple`
-或 `soundprobe ookla` 时，helper 不可用会在测速前直接失败，不会静默换
+一行，其余目标照常执行——这不算失败。但**显式**运行 `pace apple`
+或 `pace ookla` 时，helper 不可用会在测速前直接失败，不会静默换
 成别的工具。
 
 ## 一个例子

@@ -9,8 +9,8 @@ import (
 
 func TestResolverPrecedence(t *testing.T) {
 	root := t.TempDir()
-	executable := filepath.Join(root, "prefix", "bin", "soundprobe")
-	libexec := filepath.Join(root, "prefix", "libexec", "soundprobe", "librespeed-cli")
+	executable := filepath.Join(root, "prefix", "bin", "pace")
+	libexec := filepath.Join(root, "prefix", "libexec", "pace", "librespeed-cli")
 	repository := filepath.Join(root, "repo")
 	repositoryHelper := filepath.Join(repository, ".tools", "bin", "librespeed-cli")
 	pathHelper := filepath.Join(root, "path", "librespeed-cli")
@@ -19,7 +19,7 @@ func TestResolverPrecedence(t *testing.T) {
 	writeExecutable(t, libexec)
 	writeExecutable(t, repositoryHelper)
 	writeExecutable(t, pathHelper)
-	if err := os.WriteFile(filepath.Join(repository, "go.mod"), []byte("module github.com/soundadam/soundprobe\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(repository, "go.mod"), []byte("module github.com/soundadam/pace\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -68,9 +68,9 @@ func TestResolverPrecedence(t *testing.T) {
 
 func TestResolverFollowsExecutableSymlinkToLibexec(t *testing.T) {
 	root := t.TempDir()
-	cellarExecutable := filepath.Join(root, "Cellar", "soundprobe", "0.1.0", "bin", "soundprobe")
-	linkedExecutable := filepath.Join(root, "bin", "soundprobe")
-	libexec := filepath.Join(root, "Cellar", "soundprobe", "0.1.0", "libexec", "soundprobe", "librespeed-cli")
+	cellarExecutable := filepath.Join(root, "Cellar", "pace", "0.1.0", "bin", "pace")
+	linkedExecutable := filepath.Join(root, "bin", "pace")
+	libexec := filepath.Join(root, "Cellar", "pace", "0.1.0", "libexec", "pace", "librespeed-cli")
 	writeExecutable(t, cellarExecutable)
 	writeExecutable(t, libexec)
 	if err := os.MkdirAll(filepath.Dir(linkedExecutable), 0o700); err != nil {
@@ -102,8 +102,8 @@ func TestResolverFollowsExecutableSymlinkToLibexec(t *testing.T) {
 
 func TestResolverRejectsBrokenHigherPrecedenceHelper(t *testing.T) {
 	root := t.TempDir()
-	executable := filepath.Join(root, "prefix", "bin", "soundprobe")
-	libexec := filepath.Join(root, "prefix", "libexec", "soundprobe", "librespeed-cli")
+	executable := filepath.Join(root, "prefix", "bin", "pace")
+	libexec := filepath.Join(root, "prefix", "libexec", "pace", "librespeed-cli")
 	pathHelper := filepath.Join(root, "path", "librespeed-cli")
 	writeExecutable(t, executable)
 	writeExecutable(t, pathHelper)
@@ -129,7 +129,7 @@ func TestResolverRejectsBrokenHigherPrecedenceHelper(t *testing.T) {
 
 func TestResolverReturnsNotFound(t *testing.T) {
 	root := t.TempDir()
-	executable := filepath.Join(root, "bin", "soundprobe")
+	executable := filepath.Join(root, "bin", "pace")
 	writeExecutable(t, executable)
 	resolver := Resolver{
 		ExecutablePath:   executable,

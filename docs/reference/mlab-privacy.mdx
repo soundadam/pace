@@ -14,7 +14,7 @@ icon: "shield-halved"
 [M-Lab 隐私政策](https://www.measurementlab.net/privacy/)。
 
 这不是缺陷，而是 M-Lab 的设计目标——但它是一个用户必须自己做的隐私
-决定。所以 soundprobe 的规则是：
+决定。所以 pace 的规则是：
 
 > 在任何包含 M-Lab 的计划开始前，必须存在对**当前版本**隐私政策的
 > 显式同意记录；没有记录时宁可失败，也不接触 M-Lab（fail closed）。
@@ -22,12 +22,12 @@ icon: "shield-halved"
 ## 管理同意
 
 ```sh
-soundprobe consent status    # 查看当前状态与政策版本
-soundprobe consent accept    # 交互式接受（需输入 accept）
-soundprobe consent revoke    # 撤销
+pace consent status    # 查看当前状态与政策版本
+pace consent accept    # 交互式接受（需输入 accept）
+pace consent revoke    # 撤销
 ```
 
-- `accept` 仅在交互终端可用：soundprobe 会先展示 M-Lab 收集与保留
+- `accept` 仅在交互终端可用：pace 会先展示 M-Lab 收集与保留
   数据的说明和政策地址，要求你**准确输入 `accept`**。JSON 模式下
   `consent accept` 直接以 `consent_requires_interaction` 失败——同意
   不能被脚本悄悄完成。
@@ -43,15 +43,15 @@ soundprobe consent revoke    # 撤销
 | 非交互 / `--json`，计划含 M-Lab，无同意记录 | 在接触 M-Lab **之前**返回错误码 `consent_required`，退出码 `1` |
 | 计划不含 M-Lab | 完全不需要同意，也不会询问 |
 
-`soundprobe doctor --json` 的 `consentAccepted` 字段可用于在脚本中预检。
+`pace doctor --json` 的 `consentAccepted` 字段可用于在脚本中预检。
 
-## soundprobe 自身的隐私边界
+## pace 自身的隐私边界
 
 - 无遥测、无远程结果服务、无地理定位、无 ASN 查询；
 - LibreSpeed 目标始终以遥测禁用（`--telemetry-level disabled`）、不
   分享结果（不传 `--share`）的方式运行；
-- Ookla 的许可与 GDPR 提示由用户直接面对，soundprobe 从不自动传
+- Ookla 的许可与 GDPR 提示由用户直接面对，pace 从不自动传
   `--accept-license` / `--accept-gdpr`；
 - 所有历史仅存本地，权限收紧，永不自动上传。
 
-相关阅读：[soundprobe 的定位](/positioning/philosophy)。
+相关阅读：[pace 的定位](/positioning/philosophy)。

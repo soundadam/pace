@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/provider"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/provider"
 )
 
 const (
@@ -108,7 +108,7 @@ func (runner *Runner) resolve(ctx context.Context) (string, string, error) {
 	candidates := []string{}
 	explicit := path != ""
 	if !explicit {
-		if override := strings.TrimSpace(os.Getenv("SOUNDPROBE_OOKLA_PATH")); override != "" {
+		if override := strings.TrimSpace(os.Getenv("PACE_OOKLA_PATH")); override != "" {
 			path = override
 			explicit = true
 		}

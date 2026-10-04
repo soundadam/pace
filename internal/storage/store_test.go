@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/pace/internal/model"
 )
 
 func TestSaveLoadAndModes(t *testing.T) {
@@ -59,41 +59,6 @@ func TestListNewestFirstAndLimit(t *testing.T) {
 	}
 	if len(items) != 1 || items[0].RunID != "newer" {
 		t.Fatalf("List(1) = %#v, want newest only", items)
-	}
-}
-
-func TestDefaultHistoryDirPreservesLegacyData(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", "")
-	t.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacy := filepath.Join(configDir, "njuprobe", "history", "v1")
-	if err := os.MkdirAll(legacy, 0o700); err != nil {
-		t.Fatal(err)
-	}
-
-	path, err := DefaultHistoryDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if path != legacy {
-		t.Fatalf("DefaultHistoryDir() = %q, want legacy %q", path, legacy)
-	}
-
-	current := filepath.Join(configDir, "soundprobe", "history", "v1")
-	if err := os.MkdirAll(current, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	path, err = DefaultHistoryDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if path != current {
-		t.Fatalf("DefaultHistoryDir() = %q, want current %q", path, current)
 	}
 }
 

@@ -10,11 +10,11 @@ import (
 	"github.com/charmbracelet/fang"
 	"github.com/spf13/cobra"
 
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/target"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/target"
 )
 
-// Help groups shown by `soundprobe --help`.
+// Help groups shown by `pace --help`.
 const (
 	groupMeasure = "measure"
 	groupRecords = "records"
@@ -71,21 +71,21 @@ func (state *execution) handleError(w io.Writer, styles fang.Styles, err error) 
 
 func (app *App) newRootCommand(state *execution) *cobra.Command {
 	root := &cobra.Command{
-		Use:   "soundprobe",
-		Short: "Education-network-first speed tests with public references",
-		Long: `soundprobe measures education-network paths first, with public references.
+		Use:   "pace",
+		Short: "Speed tests for proxies, campus intranets and CERNET",
+		Long: `pace measures education-network paths first, with public references.
 
 Run it without arguments in a terminal to pick stations interactively. In
 scripts and pipes it runs the default plan (campus + M-Lab + Apple), and the
 global --json flag prints a single machine-readable document on stdout.`,
 		Example: `  # interactive station picker (TTY) or the default plan (scripts)
-  soundprobe
+  pace
 
   # measure specific stations over both address families
-  soundprobe run --targets nju-campus,tongji --family dual
+  pace run --targets nju-campus,tongji --family dual
 
   # machine-readable output for automation
-  soundprobe run --json --no-save`,
+  pace run --json --no-save`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			state.code = app.executeBare(cmd.Context(), state.json)
 			return nil
@@ -103,46 +103,46 @@ global --json flag prints a single machine-readable document on stdout.`,
 			"Run the default measurement plan",
 			`Run measures the default plan: the NJU campus station, M-Lab NDT7, and
 Apple networkQuality. Use --targets and --family to measure any combination
-of stations instead (list IDs with "soundprobe stations").`,
+of stations instead (list IDs with "pace stations").`,
 			`  # default plan (campus + M-Lab + Apple)
-  soundprobe run
+  pace run
 
   # pick stations and address families explicitly
-  soundprobe run --targets nju-campus,tongji --family dual
+  pace run --targets nju-campus,tongji --family dual
 
   # label a run without saving it to history
-  soundprobe run --label dorm-wifi --no-save`),
+  pace run --label dorm-wifi --no-save`),
 		app.newMeasureCommand(state, model.CommandCampus,
 			"Measure the NJU campus station",
 			`Campus measures the on-campus NJU speed station. The IPv4 service is used
 by default; pass --ipv6 to use the IPv6 service instead.`,
-			`  soundprobe campus
-  soundprobe campus --ipv6 --label dorm-wifi`),
+			`  pace campus
+  pace campus --ipv6 --label dorm-wifi`),
 		app.newMeasureCommand(state, model.CommandDomestic,
 			"Measure domestic education stations",
 			`Domestic measures publicly reachable domestic education stations over
 IPv4. It defaults to tongji; restrict or reorder the set with
 --targets (cernet, tongji).`,
-			`  soundprobe domestic
-  soundprobe domestic --targets tongji`),
+			`  pace domestic
+  pace domestic --targets tongji`),
 		app.newMeasureCommand(state, model.CommandMLab,
 			"Measure with M-Lab NDT7",
 			`MLab runs an NDT7 measurement against Measurement Lab. M-Lab publishes
 measurement data, so a one-time consent is required; grant it with
-"soundprobe consent accept".`,
-			`  soundprobe mlab
-  soundprobe mlab --note "after maintenance"`),
+"pace consent accept".`,
+			`  pace mlab
+  pace mlab --note "after maintenance"`),
 		app.newMeasureCommand(state, model.CommandApple,
 			"Measure with Apple networkQuality",
 			`Apple runs the networkQuality helper that ships with macOS and reports
 its responsiveness-oriented results alongside throughput.`,
-			`  soundprobe apple`),
+			`  pace apple`),
 		app.newMeasureCommand(state, model.CommandOokla,
 			"Measure with the official Ookla Speedtest CLI",
 			`Ookla runs the official Ookla Speedtest CLI if it is installed. When the
-helper is missing, soundprobe explains how to install it and, on Homebrew
+helper is missing, pace explains how to install it and, on Homebrew
 systems, offers to run the official setup commands after confirmation.`,
-			`  soundprobe ookla`),
+			`  pace ookla`),
 		app.newStationsCommand(state),
 		app.newHistoryCommand(state),
 		app.newLastCommand(state),
@@ -174,7 +174,7 @@ func (app *App) newMeasureCommand(state *execution, command model.Command, short
 	}
 	flags := cmd.Flags()
 	if command == model.CommandRun || command == model.CommandDomestic {
-		flags.StringVar(&options.targets, "targets", "", `comma-separated station IDs (see "soundprobe stations")`)
+		flags.StringVar(&options.targets, "targets", "", `comma-separated station IDs (see "pace stations")`)
 		flags.StringVar(&options.family, "family", string(target.FamilyIPv4), "address family: ipv4, ipv6, or dual")
 	}
 	if command == model.CommandCampus {
@@ -208,7 +208,7 @@ func (app *App) newHistoryCommand(state *execution) *cobra.Command {
 		Use:     "history",
 		Short:   "List saved runs",
 		Long:    `History lists saved runs, newest first.`,
-		Example: `  soundprobe history --limit 5`,
+		Example: `  pace history --limit 5`,
 		GroupID: groupRecords,
 		Args:    rejectArgs("history does not accept positional arguments"),
 		RunE: func(*cobra.Command, []string) error {
@@ -238,7 +238,7 @@ func (app *App) newShowCommand(state *execution) *cobra.Command {
 	return &cobra.Command{
 		Use:     "show RUN_ID",
 		Short:   "Show a saved run by ID",
-		Long:    `Show renders a saved run identified by its RUN_ID (see "soundprobe history").`,
+		Long:    `Show renders a saved run identified by its RUN_ID (see "pace history").`,
 		GroupID: groupRecords,
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) != 1 {
@@ -259,8 +259,8 @@ func (app *App) newExportCommand(state *execution) *cobra.Command {
 		Use:   "export",
 		Short: "Export saved runs as JSONL or CSV",
 		Long:  `Export writes every saved run to a file, one of --format jsonl or csv.`,
-		Example: `  soundprobe export --format jsonl --output runs.jsonl
-  soundprobe export --format csv --output runs.csv`,
+		Example: `  pace export --format jsonl --output runs.jsonl
+  pace export --format csv --output runs.csv`,
 		GroupID: groupRecords,
 		Args:    rejectArgs("export requires --format jsonl|csv and --output PATH"),
 		RunE: func(*cobra.Command, []string) error {
@@ -352,11 +352,11 @@ providers, and shows consent and storage locations.`,
 func (app *App) newVersionCommand(state *execution) *cobra.Command {
 	return &cobra.Command{
 		Use:     "version",
-		Short:   "Print the soundprobe version",
+		Short:   "Print the pace version",
 		GroupID: groupConfig,
 		Args:    rejectArgs("version does not accept arguments"),
 		RunE: func(*cobra.Command, []string) error {
-			state.code = app.writeValue(state.json, map[string]string{"version": app.Version}, "soundprobe "+app.Version)
+			state.code = app.writeValue(state.json, map[string]string{"version": app.Version}, "pace "+app.Version)
 			return nil
 		},
 	}

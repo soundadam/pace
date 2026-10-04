@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/soundadam/soundprobe/internal/target"
+	"github.com/soundadam/pace/internal/target"
 )
 
 const SchemaVersion = 1
@@ -37,7 +37,7 @@ func DefaultPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve user config directory: %w", err)
 	}
-	return filepath.Join(configDir, "soundprobe", "preferences.json"), nil
+	return filepath.Join(configDir, "pace", "preferences.json"), nil
 }
 
 func DefaultConfig() Config {

@@ -1,8 +1,8 @@
-# soundprobe v0.4 implementation specification
+# pace v0.4 implementation specification
 
 ## 1. Product contract
 
-soundprobe measures explicitly selected network targets. A target represents one
+pace measures explicitly selected network targets. A target represents one
 measurement purpose and, where relevant, one address family. Results from
 separate targets must never be silently substituted, ranked, or collapsed into a
 synthetic score.
@@ -113,7 +113,7 @@ its backend is unreachable.
 ## 4. M-Lab behavior
 
 Run pinned `ndt7-client` v0.10.1 with JSON events, TLS verification, client name
-`soundprobe`, both download and upload, and a 55-second whole-test timeout. Use
+`pace`, both download and upload, and a 55-second whole-test timeout. Use
 M-Lab Locate rather than pinning a server.
 
 Consume `starting`, `connected`, `measurement`, `error`, and `complete` events.
@@ -143,13 +143,13 @@ information.
 Only the official Ookla `speedtest` executable is accepted. Preflight must inspect
 `speedtest --version`, require an Ookla/Speedtest identity, and reject the Python
 `speedtest-cli` output. When no explicit path is configured, inspect all PATH
-candidates and use the first validated official executable; `SOUNDPROBE_OOKLA_PATH`
+candidates and use the first validated official executable; `PACE_OOKLA_PATH`
 is an explicit override. Run `speedtest --format=json`, adding
 `--interface=<active-interface>` when available. Never pass license or GDPR
 acceptance flags automatically and never bundle or maintain a replacement
 implementation of the helper.
 
-When an explicit interactive `soundprobe ookla` command finds a missing or
+When an explicit interactive `pace ookla` command finds a missing or
 conflicting helper, the CLI may offer the official Homebrew sequence
 (`brew tap teamookla/speedtest`, `brew update`, `brew install speedtest --force`).
 The sequence runs only after an Enter confirmation, uses direct argument arrays
@@ -174,7 +174,7 @@ ordered plan is visible before and during execution.
 
 ### 5.1 Interactive selector
 
-Bare `soundprobe` in an interactive terminal performs bounded, lightweight
+Bare `pace` in an interactive terminal performs bounded, lightweight
 reachability probes and opens a Bubble Tea inline selector. Probes may check DNS,
 connection establishment, TLS, and a small backend response; they must not run a
 bandwidth test.
@@ -192,7 +192,7 @@ Enter        execute
 q / Esc      cancel
 ```
 
-The selector chrome follows Teaway's Charm TUI: indigo title `soundprobe`,
+The selector chrome follows Teaway's Charm TUI: indigo title `pace`,
 fuchsia cursor (`>`), green check (`✓`) for selected stations, faint bullet
 (`•`) for unselected, and a dashed (`–`) disabled marker. Help is sparse
 key names. IPv4-only stations are disabled in IPv6 mode.
@@ -216,12 +216,12 @@ JSON, redirected, and explicitly scripted commands never open the selector.
 They resolve a deterministic target list from command defaults and flags:
 
 ```text
-soundprobe run --targets LIST --family ipv4|ipv6|dual
-soundprobe domestic --targets LIST --family ipv4|dual
-soundprobe campus [--ipv4|--ipv6]
-soundprobe mlab
-soundprobe apple
-soundprobe ookla
+pace run --targets LIST --family ipv4|ipv6|dual
+pace domestic --targets LIST --family ipv4|dual
+pace campus [--ipv4|--ipv6]
+pace mlab
+pace apple
+pace ookla
 ```
 
 `--targets` accepts comma-separated station IDs. Invalid station IDs and
@@ -261,7 +261,7 @@ Stable exit codes:
 ## 7. Terminal interface
 
 Use Bubble Tea v2 in inline mode, never alternate-screen mode. Visual chrome
-matches Teaway: indigo `soundprobe` title, fuchsia accent, faint help, and a
+matches Teaway: indigo `pace` title, fuchsia accent, faint help, and a
 thin `├─●─┤` activity track instead of a dense block bar. The selector must
 clear before measurement progress begins. During execution redraw one fixed
 block at no more than four frames per second.
@@ -285,19 +285,19 @@ raw provider events.
 ## 8. Commands
 
 ```text
-soundprobe
-soundprobe run [--targets LIST] [--family ipv4|ipv6|dual] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe campus [--ipv4|--ipv6] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe domestic [--targets LIST] [--family ipv4|dual] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe mlab [--label TEXT] [--note TEXT] [--no-save]
-soundprobe stations [--json]
-soundprobe history [--limit N]
-soundprobe last [--json]
-soundprobe show RUN_ID [--json]
-soundprobe export --format jsonl|csv --output PATH
-soundprobe consent status|accept|revoke
-soundprobe doctor [--json]
-soundprobe version
+pace
+pace run [--targets LIST] [--family ipv4|ipv6|dual] [--label TEXT] [--note TEXT] [--no-save]
+pace campus [--ipv4|--ipv6] [--label TEXT] [--note TEXT] [--no-save]
+pace domestic [--targets LIST] [--family ipv4|dual] [--label TEXT] [--note TEXT] [--no-save]
+pace mlab [--label TEXT] [--note TEXT] [--no-save]
+pace stations [--json]
+pace history [--limit N]
+pace last [--json]
+pace show RUN_ID [--json]
+pace export --format jsonl|csv --output PATH
+pace consent status|accept|revoke
+pace doctor [--json]
+pace version
 ```
 
 ## 9. Consent and privacy
@@ -311,7 +311,7 @@ A plan without M-Lab never requires M-Lab consent. Noninteractive execution
 without current consent fails before contacting M-Lab. LibreSpeed telemetry and
 sharing are always disabled.
 
-soundprobe has no own analytics, remote result service, geolocation enrichment, or
+pace has no own analytics, remote result service, geolocation enrichment, or
 ASN lookup.
 
 ## 10. Storage and export
@@ -319,9 +319,9 @@ ASN lookup.
 Store summaries under the current user's platform configuration directory:
 
 ```text
-macOS:   ~/Library/Application Support/soundprobe/history/v1/<run-id>.json
-Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v1/<run-id>.json
-Windows: %AppData%\\soundprobe\\history\\v1\\<run-id>.json
+macOS:   ~/Library/Application Support/pace/history/v1/<run-id>.json
+Linux:   ${XDG_CONFIG_HOME:-~/.config}/pace/history/v1/<run-id>.json
+Windows: %AppData%\\pace\\history\\v1\\<run-id>.json
 ```
 
 Directories are `0700`; files are `0600`. Use same-directory temporary files,
@@ -338,7 +338,7 @@ multi-station and dual-stack plans.
 
 Resolve helpers in this order:
 
-1. installed `../libexec/soundprobe` relative to the executable;
+1. installed `../libexec/pace` relative to the executable;
 2. repository-local `.tools/bin`;
 3. documented developer PATH fallback.
 

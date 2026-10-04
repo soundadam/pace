@@ -11,7 +11,7 @@ icon: "code"
 打开交互界面。命令级错误统一为：
 
 ```json
-{"error": {"code": "consent_required", "message": "M-Lab consent is required; run `soundprobe consent accept` interactively"}}
+{"error": {"code": "consent_required", "message": "M-Lab consent is required; run `pace consent accept` interactively"}}
 ```
 
 常见错误码：`invalid_arguments`、`unknown_command`、`consent_required`、
@@ -28,7 +28,7 @@ icon: "code"
 | --- | --- | --- |
 | `schemaVersion` | int | 固定 `1`；0.1 版写入的旧历史仍可读取 |
 | `runId` | string | 运行 ID，也是历史文件名 |
-| `toolVersion` | string | soundprobe 版本 |
+| `toolVersion` | string | pace 版本 |
 | `startedAt` / `endedAt` | RFC 3339 时间 | 起止时间 |
 | `command` | string | `run`/`campus`/`domestic`/`mlab`/`apple`/`ookla`（旧 `edge` 仅用于读取 schema-v1 历史） |
 | `targets` | string[] | **按执行顺序**排列的 provider ID |
@@ -66,23 +66,22 @@ icon: "code"
 每次运行（除 `--no-save`）永久保存为一个 JSON 文件：
 
 ```text
-macOS:   ~/Library/Application Support/soundprobe/history/v1/<run-id>.json
-Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/history/v1/<run-id>.json
-Windows: %AppData%\soundprobe\history\v1\<run-id>.json
+macOS:   ~/Library/Application Support/pace/history/v1/<run-id>.json
+Linux:   ${XDG_CONFIG_HOME:-~/.config}/pace/history/v1/<run-id>.json
+Windows: %AppData%\pace\history\v1\<run-id>.json
 ```
 
 - 目录权限 `0700`、文件权限 `0600`；
 - 写入使用同目录临时文件 + fsync + 原子 rename；
 - 不保存逐秒采样，只存最终摘要；
 - 历史**永不自动清理**；
-- 旧的 schema-v1 历史保持可读；若存在早期 `njuprobe` 目录的历史或
-  同意记录，迁移完成前会继续读取，新写入使用 `soundprobe` 目录。
+- 旧的 schema-v1 历史保持可读。
 
 ## 导出
 
 ```sh
-soundprobe export --format jsonl --output /tmp/soundprobe.jsonl
-soundprobe export --format csv   --output /tmp/soundprobe.csv
+pace export --format jsonl --output /tmp/pace.jsonl
+pace export --format csv   --output /tmp/pace.csv
 ```
 
 - **JSONL**：每行一个完整运行摘要，适合喂给日志/分析系统；
@@ -94,7 +93,7 @@ soundprobe export --format csv   --output /tmp/soundprobe.csv
 定时记录并在失败时告警（`jq` 处理单文档输出）：
 
 ```sh
-result=$(soundprobe run --targets nju-campus,mlab --family ipv4 --json)
+result=$(pace run --targets nju-campus,mlab --family ipv4 --json)
 status=$(echo "$result" | jq -r '.status // "error"')
 if [ "$status" != "success" ]; then
   echo "$result" | jq '{status, failures: [.measurements[]? | select(.failure) | {provider, stage: .failure.stage, code: .failure.code}]}'
@@ -104,11 +103,11 @@ fi
 提取最近一次各目标的下行速率：
 
 ```sh
-soundprobe last --json | jq -r '.measurements[] | [.provider, .method, .downloadMbps] | @tsv'
+pace last --json | jq -r '.measurements[] | [.provider, .method, .downloadMbps] | @tsv'
 ```
 
 <Note>
 非交互执行包含 M-Lab 的计划前，请先在交互终端完成
-`soundprobe consent accept`，否则命令会以 `consent_required` 失败
+`pace consent accept`，否则命令会以 `consent_required` 失败
 （fail closed）。见 [M-Lab 隐私与同意](/reference/mlab-privacy)。
 </Note>

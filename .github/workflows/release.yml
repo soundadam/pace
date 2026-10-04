@@ -1,4 +1,4 @@
-# Release automation for soundprobe.
+# Release automation for pace.
 #
 # Trigger: push a tag matching v* (e.g. v0.3.0). GoReleaser then builds the
 # cross-platform archives, creates the GitHub Release with grouped changelog
@@ -8,12 +8,12 @@
 #   GITHUB_TOKEN
 #     Provided automatically by GitHub Actions; no setup needed. The
 #     `contents: write` permission below lets GoReleaser create the release
-#     and upload assets in soundadam/soundprobe.
+#     and upload assets in soundadam/pace.
 #   HOMEBREW_TAP_GITHUB_TOKEN (repository secret, must be configured once)
 #     A fine-grained personal access token with "Contents: read and write"
 #     on soundadam/homebrew-tap. The default GITHUB_TOKEN cannot push to a
 #     different repository, so this token is what updates
-#     Casks/soundprobe.rb in the tap. Configure it under
+#     Casks/pace.rb in the tap. Configure it under
 #     Settings > Secrets and variables > Actions.
 name: Release
 

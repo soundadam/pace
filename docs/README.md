@@ -1,6 +1,6 @@
-# soundprobe 文档站
+# pace 文档站
 
-本目录是 soundprobe 的 [Mintlify](https://mintlify.com) 文档站源文件。
+本目录是 pace 的 [Mintlify](https://mintlify.com) 文档站源文件。
 站点配置在 `docs.json`，页面为中文 MDX，按导航分组放在
 `getting-started/`、`concepts/`、`positioning/`、`reference/` 子目录。
 
