@@ -54,7 +54,7 @@ verify_archive() {
 }
 
 mkdir -p "$TOOLS_DIR"
-workdir=$(mktemp -d "${TMPDIR:-/tmp}/soundprobe-tools.XXXXXX")
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/pace-tools.XXXXXX")
 cleanup() {
   rm -rf "$workdir"
 }
@@ -86,7 +86,7 @@ mkdir -p "$ndt7_source"
 tar -xzf "$ndt7_archive" --strip-components=1 -C "$ndt7_source"
 
 ndt7_binary="$workdir/ndt7-client-bin"
-ndt7_ldflags="-s -w -buildid= -X main.ClientName=soundprobe -X main.ClientVersion=0.10.1"
+ndt7_ldflags="-s -w -buildid= -X main.ClientName=pace -X main.ClientVersion=0.10.1"
 (
   cd "$ndt7_source"
   GOTOOLCHAIN=auto go build -trimpath -ldflags "$ndt7_ldflags" -o "$ndt7_binary" ./cmd/ndt7-client

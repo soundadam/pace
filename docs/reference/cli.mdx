@@ -1,29 +1,29 @@
 ---
 title: "CLI 命令参考"
 sidebarTitle: "CLI 命令"
-description: "soundprobe 全部命令、参数与退出码"
+description: "pace 全部命令、参数与退出码"
 icon: "terminal"
 ---
 
 ## 命令总览
 
 ```text
-soundprobe
-soundprobe run [--targets LIST] [--family ipv4|ipv6|dual] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe campus [--ipv4|--ipv6] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe domestic [--targets LIST] [--family ipv4|dual] [--label TEXT] [--note TEXT] [--no-save]
-soundprobe mlab [--label TEXT] [--note TEXT] [--no-save]
-soundprobe apple [--label TEXT] [--note TEXT] [--no-save]
-soundprobe ookla [--label TEXT] [--note TEXT] [--no-save]
-soundprobe stations [--json]
-soundprobe history [--limit N]
-soundprobe last [--json]
-soundprobe show RUN_ID [--json]
-soundprobe export --format jsonl|csv --output PATH
-soundprobe consent status|accept|revoke
-soundprobe setup
-soundprobe doctor [--json]
-soundprobe version
+pace
+pace run [--targets LIST] [--family ipv4|ipv6|dual] [--label TEXT] [--note TEXT] [--no-save]
+pace campus [--ipv4|--ipv6] [--label TEXT] [--note TEXT] [--no-save]
+pace domestic [--targets LIST] [--family ipv4|dual] [--label TEXT] [--note TEXT] [--no-save]
+pace mlab [--label TEXT] [--note TEXT] [--no-save]
+pace apple [--label TEXT] [--note TEXT] [--no-save]
+pace ookla [--label TEXT] [--note TEXT] [--no-save]
+pace stations [--json]
+pace history [--limit N]
+pace last [--json]
+pace show RUN_ID [--json]
+pace export --format jsonl|csv --output PATH
+pace consent status|accept|revoke
+pace setup
+pace doctor [--json]
+pace version
 ```
 
 全局 `--json` 可加在任意位置：输出恰好一个 JSON 文档，不含 ANSI 转义，
@@ -33,7 +33,7 @@ soundprobe version
 
 | 命令 | 默认目标 | 说明 |
 | --- | --- | --- |
-| `soundprobe` | 日常测速站设置 | TTY 中打开交互选择器（首次运行先进入 setup）；脚本/重定向/`--json` 下等价于 `run` 默认计划 |
+| `pace` | 日常测速站设置 | TTY 中打开交互选择器（首次运行先进入 setup）；脚本/重定向/`--json` 下等价于 `run` 默认计划 |
 | `run` | `nju-campus, mlab, apple`（非 macOS 自动移除 `apple`） | 通用组合测量，`--targets` 自定义目标列表 |
 | `campus` | `nju-campus` | NJU 校园网；默认 IPv4，`--ipv6` 切换（无 IPv4 回退） |
 | `domestic` | `tongji` | 教育网参考站，顺序执行；仅 IPv4（`--family ipv6` 被拒绝）；`cernet` 仅可显式指定 |
@@ -58,10 +58,10 @@ soundprobe version
 示例：
 
 ```sh
-soundprobe run --targets nju-campus,mlab,apple --family ipv4 --no-save --json
-soundprobe campus --ipv6 --label "宿舍有线"
-soundprobe domestic --targets tongji --family ipv4
-soundprobe ookla --no-save --json
+pace run --targets nju-campus,mlab,apple --family ipv4 --no-save --json
+pace campus --ipv6 --label "宿舍有线"
+pace domestic --targets tongji --family ipv4
+pace ookla --no-save --json
 ```
 
 ## 查询与管理命令
@@ -80,7 +80,7 @@ soundprobe ookla --no-save --json
 
 ## 交互选择器
 
-在 TTY 中裸运行 `soundprobe` 会打开 Bubble Tea 内联选择器（不使用备用
+在 TTY 中裸运行 `pace` 会打开 Bubble Tea 内联选择器（不使用备用
 屏幕），展示各站点的描述、地址族支持、可达性和探测延迟：
 
 ```text
@@ -93,7 +93,7 @@ esc          取消
 ```
 
 推荐只设置默认值，不授权测量过程中的静默替换。Ookla 永远不会被自动
-推荐，只有在 `soundprobe setup` 中被主动勾选后才进入日常集合。
+推荐，只有在 `pace setup` 中被主动勾选后才进入日常集合。
 
 ## 退出码
 

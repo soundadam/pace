@@ -4,15 +4,15 @@ description: "Ookla、Fast.com、LibreSpeed、NDT7、networkQuality、iperf3 与
 icon: "table-columns"
 ---
 
-这些工具没有优劣之分，只有**回答的问题不同**。soundprobe 与其中几个
+这些工具没有优劣之分，只有**回答的问题不同**。pace 与其中几个
 不是竞争关系而是复用关系：LibreSpeed CLI 和 ndt7-client 作为 helper
-随 soundprobe 发布，Apple networkQuality 和 Ookla 官方 CLI 作为可选
-provider 被调用。soundprobe 提供的是教育网视角的编排、统一的结果模型
+随 pace 发布，Apple networkQuality 和 Ookla 官方 CLI 作为可选
+provider 被调用。pace 提供的是教育网视角的编排、统一的结果模型
 和诚实的语义，而不是重新发明测量方法。
 
 ## 总览
 
-| 工具 | 方法 | 服务器 | 形态 | 与 soundprobe 的关系 |
+| 工具 | 方法 | 服务器 | 形态 | 与 pace 的关系 |
 | --- | --- | --- | --- | --- |
 | Ookla Speedtest | 多连接 | 全球目录，通常就近 | 网页 / 官方 CLI / App | 可选 provider（仅官方 CLI，用户自装） |
 | Fast.com | 多连接 | Netflix CDN 边缘 | 网页 | 无集成，适用场景不同 |
@@ -30,7 +30,7 @@ provider 被调用。soundprobe 提供的是教育网视角的编排、统一的
 是"接入网附近路径"的漂亮数字，适合验证宽带签约速率、与运营商沟通时
 作为共同语言。官方 CLI 支持 JSON 输出。
 
-在 soundprobe 中，`ookla` 目标调用**官方 CLI**（用户自行安装、自行
+在 pace 中，`ookla` 目标调用**官方 CLI**（用户自行安装、自行
 接受 Ookla 条款），并把服务器 ID、运营方（sponsor）、延迟、抖动等
 如实写入结果。注意 sponsor 是测速服务器的运营方，不是你的接入运营商。
 
@@ -38,14 +38,14 @@ provider 被调用。soundprobe 提供的是教育网视角的编排、统一的
 
 Netflix 出品的网页测速，测的是你到 Netflix CDN 边缘节点的吞吐——
 回答的问题非常具体："看 Netflix 会不会卡"。界面极简、无广告，也正
-因为目标单一，不适合做通用网络诊断。soundprobe 未集成它，两者互补。
+因为目标单一，不适合做通用网络诊断。pace 未集成它，两者互补。
 
 ### LibreSpeed
 
 开源（LGPL-3.0-only）测速方案，可完全自部署，无跟踪。许多高校（包括
 NJU、同济的测速站）基于它搭建。方法是多并发 HTTP 流。
 
-soundprobe 维护了一份基于上游 v1.0.13 的 LibreSpeed CLI helper（源码
+pace 维护了一份基于上游 v1.0.13 的 LibreSpeed CLI helper（源码
 在仓库 `components/librespeed-cli`，保持 LGPL 许可、独立进程边界），
 用固定的站点定义执行三并发流测量，并始终禁用遥测与结果分享。
 
@@ -55,9 +55,9 @@ soundprobe 维护了一份基于上游 v1.0.13 的 LibreSpeed CLI helper（源�
 平台，NDT7 是其单流 TCP 测试协议。数据公开，被监管机构和研究者广泛
 使用。单流方法对丢包和 RTT 敏感，反映"单连接体验"。
 
-soundprobe 的 `mlab` 目标运行固定版本的 `ndt7-client`（Apache-2.0），
+pace 的 `mlab` 目标运行固定版本的 `ndt7-client`（Apache-2.0），
 经 M-Lab Locate 动态选择节点。注意：M-Lab 公开并无限期保留结果与公网
-IP，所以 soundprobe 要求[显式隐私同意](/reference/mlab-privacy)。
+IP，所以 pace 要求[显式隐私同意](/reference/mlab-privacy)。
 
 ### Apple networkQuality
 
@@ -66,7 +66,7 @@ macOS/iOS 内置（macOS 上为 `/usr/bin/networkQuality`），特色是**负载
 很快但会议卡顿"。方法方向对应 IETF IPPM 的
 responsiveness 草案。
 
-soundprobe 在 macOS 上把它作为可选 provider 调用（不捆绑、不代接受
+pace 在 macOS 上把它作为可选 provider 调用（不捆绑、不代接受
 条款），呈现吞吐、基础 RTT 和三个 RPM 值。
 
 ### iperf3
@@ -74,14 +74,14 @@ soundprobe 在 macOS 上把它作为可选 provider 调用（不捆绑、不代�
 网络工程师的标准工具（ESnet 维护）：客户端和服务器**都由你控制**，
 可精确指定流数、方向、时长、协议。适合内网验收、专线调试、设备吞吐
 极限测试。因为需要自备两端，它不回答"到公共互联网表现如何"的问题，
-与 soundprobe 场景不重叠。
+与 pace 场景不重叠。
 
 ### Python speedtest-cli
 
 历史悠久的第三方工具，通过逆向 Ookla 协议工作，**上游已停止维护**，
 数值与官方客户端常有偏差。Homebrew 中名为 `speedtest-cli` 的就是它。
 
-soundprobe 明确拒绝它：`ookla` 目标预检会校验 `speedtest --version`
+pace 明确拒绝它：`ookla` 目标预检会校验 `speedtest --version`
 的官方标识，发现是 Python 工具时拒绝执行并给出指引，而不是静默用它
 凑合。原因不是敌意，而是数据质量——一个停止维护的逆向实现无法保证
 测量语义稳定。
@@ -90,13 +90,13 @@ soundprobe 明确拒绝它：`ookla` 目标预检会校验 `speedtest --version`
 
 | 你想知道 | 建议 |
 | --- | --- |
-| 教育网各段路径分别如何 | soundprobe（这就是它存在的原因） |
-| 宽带是否达到签约速率 | Ookla（网页或官方 CLI，或经 soundprobe 的 `ookla` 目标） |
+| 教育网各段路径分别如何 | pace（这就是它存在的原因） |
+| 宽带是否达到签约速率 | Ookla（网页或官方 CLI，或经 pace 的 `ookla` 目标） |
 | 看 Netflix 够不够流畅 | Fast.com |
-| 会议卡顿是不是 bufferbloat | Apple networkQuality（或 soundprobe 的 `apple` 目标看 RPM） |
-| 单连接跨网性能、可研究的公开数据 | M-Lab NDT7（或 soundprobe 的 `mlab` 目标） |
+| 会议卡顿是不是 bufferbloat | Apple networkQuality（或 pace 的 `apple` 目标看 RPM） |
+| 单连接跨网性能、可研究的公开数据 | M-Lab NDT7（或 pace 的 `mlab` 目标） |
 | 自建/内网链路的极限吞吐 | iperf3 |
 | 自部署一个无跟踪的测速站 | LibreSpeed |
 
-一句话总结：soundprobe 不试图替代这些工具，而是把其中适合教育网场景的
+一句话总结：pace 不试图替代这些工具，而是把其中适合教育网场景的
 几个组织成**多视角、语义一致、可脚本化**的一次诊断。

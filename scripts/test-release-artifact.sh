@@ -2,7 +2,7 @@
 set -eu
 
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-workdir=$(mktemp -d "${TMPDIR:-/tmp}/soundprobe-release.XXXXXX")
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/pace-release.XXXXXX")
 repo="$workdir/repo"
 candidate_probe=
 concurrent_pid=
@@ -29,7 +29,7 @@ trap cleanup EXIT HUP INT TERM
 
 create_candidate_ref() {
   source_repo=$1
-  candidate_ref=$(git -C "$source_repo" stash create "soundprobe release candidate") || return 1
+  candidate_ref=$(git -C "$source_repo" stash create "pace release candidate") || return 1
   if [ -n "$candidate_ref" ]; then
     printf '%s\n' "$candidate_ref"
   else
@@ -37,14 +37,14 @@ create_candidate_ref() {
   fi
 }
 
-archive="$repo/dist/soundprobe-0.1.0.tar.gz"
-formula="$repo/dist/Formula/soundprobe.rb"
+archive="$repo/dist/pace-0.1.0.tar.gz"
+formula="$repo/dist/Formula/pace.rb"
 
 assert_no_publication_residue() {
   if find "$repo/dist" \
-    \( -name '*.tmp.*' -o -name '*.backup.*' -o -name '.soundprobe-release.lock' \
-      -o -name '.soundprobe-release.lock.stale.*' \
-      -o -name '.soundprobe-release.lock.owner.*' \) \
+    \( -name '*.tmp.*' -o -name '*.backup.*' -o -name '.pace-release.lock' \
+      -o -name '.pace-release.lock.stale.*' \
+      -o -name '.pace-release.lock.owner.*' \) \
     -print | grep -q .; then
     echo "release artifact test: build left publication staging files" >&2
     exit 1
@@ -85,7 +85,7 @@ PY
 
 build_once "$workdir/archive-first.tar.gz" "$workdir/formula-first.rb" 022
 assert_publication_modes
-if ! tar -tzf "$archive" | grep -q '^soundprobe-0.1.0/components/librespeed-cli/SOUNDADAM.md$'; then
+if ! tar -tzf "$archive" | grep -q '^pace-0.1.0/components/librespeed-cli/SOUNDADAM.md$'; then
   echo "release artifact test: maintained LibreSpeed source is missing from source archive" >&2
   exit 1
 fi
@@ -135,8 +135,8 @@ mv "$saved_formula_directory" "$repo/dist/Formula"
 
 cp "$archive" "$workdir/archive-before-failure.tar.gz"
 cp "$formula" "$workdir/formula-before-failure.rb"
-cp "$repo/packaging/homebrew/soundprobe.rb.tmpl" "$workdir/formula-template-original.rb"
-printf '\n# @UNRESOLVED_RELEASE_TOKEN@\n' >> "$repo/packaging/homebrew/soundprobe.rb.tmpl"
+cp "$repo/packaging/homebrew/pace.rb.tmpl" "$workdir/formula-template-original.rb"
+printf '\n# @UNRESOLVED_RELEASE_TOKEN@\n' >> "$repo/packaging/homebrew/pace.rb.tmpl"
 invalid_template_succeeded=0
 if (
   cd "$repo"
@@ -144,7 +144,7 @@ if (
 ); then
   invalid_template_succeeded=1
 fi
-cp "$workdir/formula-template-original.rb" "$repo/packaging/homebrew/soundprobe.rb.tmpl"
+cp "$workdir/formula-template-original.rb" "$repo/packaging/homebrew/pace.rb.tmpl"
 if [ "$invalid_template_succeeded" -eq 1 ]; then
   echo "release artifact test: invalid Formula template unexpectedly succeeded" >&2
   exit 1
@@ -166,7 +166,7 @@ for argument in "$@"; do
   destination=$argument
 done
 case "$destination" in
-  */dist/Formula/soundprobe.rb)
+  */dist/Formula/pace.rb)
     if [ ! -e "${NJU_SIGNAL_MARKER:?}" ]; then
       : > "$NJU_SIGNAL_MARKER"
       kill -TERM "$PPID"
@@ -201,15 +201,15 @@ cat > "$kill_fake_bin/ln" <<'SH'
 #!/bin/sh
 set -eu
 
-"${SOUNDPROBE_REAL_LN:?}" "$@"
+"${PACE_REAL_LN:?}" "$@"
 destination=
 for argument in "$@"; do
   destination=$argument
 done
 case "$destination" in
-  */dist/.soundprobe-release.lock)
-    if [ ! -e "${SOUNDPROBE_KILL_MARKER:?}" ]; then
-      : > "$SOUNDPROBE_KILL_MARKER"
+  */dist/.pace-release.lock)
+    if [ ! -e "${PACE_KILL_MARKER:?}" ]; then
+      : > "$PACE_KILL_MARKER"
       kill -KILL "$PPID"
     fi
     ;;
@@ -220,8 +220,8 @@ chmod +x "$kill_fake_bin/ln"
 atomic_lock_build_succeeded=0
 if (
   cd "$repo"
-  SOUNDPROBE_REAL_LN=$(command -v ln) \
-    SOUNDPROBE_KILL_MARKER="$kill_marker" \
+  PACE_REAL_LN=$(command -v ln) \
+    PACE_KILL_MARKER="$kill_marker" \
     PATH="$kill_fake_bin:$PATH" \
     ./scripts/build-release.sh 0.1.0 HEAD >/dev/null 2>&1
 ); then
@@ -231,8 +231,8 @@ if [ "$atomic_lock_build_succeeded" -eq 1 ] || [ ! -e "$kill_marker" ]; then
   echo "release artifact test: lock-link SIGKILL fixture did not interrupt publication" >&2
   exit 1
 fi
-if [ ! -f "$repo/dist/.soundprobe-release.lock" ] || \
-  [ -L "$repo/dist/.soundprobe-release.lock" ]; then
+if [ ! -f "$repo/dist/.pace-release.lock" ] || \
+  [ -L "$repo/dist/.pace-release.lock" ]; then
   echo "release artifact test: interrupted atomic lock was not a regular file" >&2
   exit 1
 fi
@@ -259,9 +259,9 @@ assert_no_publication_residue
 stale_lock_pid=$!
 stale_lock_start=$(LC_ALL=C ps -p "$stale_lock_pid" -o lstart= | awk '{$1=$1; print}')
 wait "$stale_lock_pid"
-mkdir "$repo/dist/.soundprobe-release.lock"
-printf '%s\n' "$stale_lock_pid" > "$repo/dist/.soundprobe-release.lock/pid"
-printf '%s\n' "$stale_lock_start" > "$repo/dist/.soundprobe-release.lock/start"
+mkdir "$repo/dist/.pace-release.lock"
+printf '%s\n' "$stale_lock_pid" > "$repo/dist/.pace-release.lock/pid"
+printf '%s\n' "$stale_lock_start" > "$repo/dist/.pace-release.lock/start"
 if ! (
   cd "$repo"
   ./scripts/build-release.sh 0.1.0 HEAD >"$workdir/stale-lock.log" 2>&1
@@ -282,9 +282,9 @@ assert_no_publication_residue
 sleep 30 &
 reused_pid=$!
 reused_start=$(LC_ALL=C ps -p "$reused_pid" -o lstart= | awk '{$1=$1; print}')
-mkdir "$repo/dist/.soundprobe-release.lock"
-printf '%s\n' "$reused_pid" > "$repo/dist/.soundprobe-release.lock/pid"
-printf '%s\n' 'Thu Jan 1 00:00:00 1970' > "$repo/dist/.soundprobe-release.lock/start"
+mkdir "$repo/dist/.pace-release.lock"
+printf '%s\n' "$reused_pid" > "$repo/dist/.pace-release.lock/pid"
+printf '%s\n' 'Thu Jan 1 00:00:00 1970' > "$repo/dist/.pace-release.lock/start"
 if ! (
   cd "$repo"
   ./scripts/build-release.sh 0.1.0 HEAD >"$workdir/reused-pid-lock.log" 2>&1
@@ -313,9 +313,9 @@ cmp "$archive" "$workdir/archive-before-failure.tar.gz"
 cmp "$formula" "$workdir/formula-before-failure.rb"
 assert_no_publication_residue
 
-mkdir "$repo/dist/.soundprobe-release.lock"
-printf '%s\n' 'invalid-owner' > "$repo/dist/.soundprobe-release.lock/pid"
-printf '%s\n' 'invalid-start' > "$repo/dist/.soundprobe-release.lock/start"
+mkdir "$repo/dist/.pace-release.lock"
+printf '%s\n' 'invalid-owner' > "$repo/dist/.pace-release.lock/pid"
+printf '%s\n' 'invalid-start' > "$repo/dist/.pace-release.lock/start"
 invalid_lock_succeeded=0
 if (
   cd "$repo"
@@ -332,13 +332,13 @@ if ! grep -q 'release publication lock has no valid owner process identity' "$wo
   cat "$workdir/invalid-lock.log" >&2
   exit 1
 fi
-if [ "$(cat "$repo/dist/.soundprobe-release.lock/pid")" != 'invalid-owner' ]; then
+if [ "$(cat "$repo/dist/.pace-release.lock/pid")" != 'invalid-owner' ]; then
   echo "release artifact test: invalid release lock was modified" >&2
   exit 1
 fi
-rm -f "$repo/dist/.soundprobe-release.lock/pid"
-rm -f "$repo/dist/.soundprobe-release.lock/start"
-rmdir "$repo/dist/.soundprobe-release.lock"
+rm -f "$repo/dist/.pace-release.lock/pid"
+rm -f "$repo/dist/.pace-release.lock/start"
+rmdir "$repo/dist/.pace-release.lock"
 assert_no_publication_residue
 
 concurrent_fake_bin="$workdir/concurrent-fake-bin"
@@ -409,7 +409,7 @@ if ! grep -q 'another release publication is already in progress' "$workdir/conc
   cat "$workdir/concurrent-second.log" >&2
   exit 1
 fi
-if [ -e "$repo/dist/soundprobe-0.2.0.tar.gz" ]; then
+if [ -e "$repo/dist/pace-0.2.0.tar.gz" ]; then
   echo "release artifact test: rejected concurrent release published an archive" >&2
   exit 1
 fi
@@ -434,8 +434,8 @@ git -C "$ROOT" worktree add --detach --quiet "$candidate_probe" "$probe_ref"
   cd "$candidate_probe"
   ./scripts/build-release.sh 0.1.0 HEAD >/dev/null
 )
-if ! tar -xOzf "$candidate_probe/dist/soundprobe-0.1.0.tar.gz" \
-  soundprobe-0.1.0/README.md | grep -q RELEASE_CANDIDATE_SNAPSHOT_PROBE; then
+if ! tar -xOzf "$candidate_probe/dist/pace-0.1.0.tar.gz" \
+  pace-0.1.0/README.md | grep -q RELEASE_CANDIDATE_SNAPSHOT_PROBE; then
   echo "release artifact test: candidate tracked changes were not archived" >&2
   exit 1
 fi
@@ -451,7 +451,7 @@ import tarfile
 
 archive_path = pathlib.Path(sys.argv[1])
 formula_path = pathlib.Path(sys.argv[2])
-prefix = "soundprobe-0.1.0"
+prefix = "pace-0.1.0"
 
 with tarfile.open(archive_path, "r:gz") as archive:
     members = archive.getmembers()
@@ -474,8 +474,8 @@ required = {
     f"{prefix}/README.md",
     f"{prefix}/go.mod",
     f"{prefix}/go.sum",
-    f"{prefix}/cmd/soundprobe/main.go",
-    f"{prefix}/packaging/homebrew/soundprobe.rb.tmpl",
+    f"{prefix}/cmd/pace/main.go",
+    f"{prefix}/packaging/homebrew/pace.rb.tmpl",
 }
 missing = required.difference(names)
 if missing:

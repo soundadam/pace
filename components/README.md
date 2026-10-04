@@ -7,5 +7,5 @@ the repository-root MIT license unless a component explicitly says so.
 | --- | --- | --- |
 | `librespeed-cli` | Pinned campus speed-test helper | LGPL-3.0-only |
 
-soundprobe and other consumers execute the helper as a separate process. They do
+pace and other consumers execute the helper as a separate process. They do
 not import or statically link its Go packages.

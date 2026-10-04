@@ -109,7 +109,7 @@ func (theme theme) Bad() lipgloss.Style {
 }
 
 func (theme theme) appTitle(version string) string {
-	title := theme.Title().Render("soundprobe")
+	title := theme.Title().Render("pace")
 	if strings.TrimSpace(version) == "" {
 		return title
 	}

@@ -1,4 +1,4 @@
-# Continuous integration for soundprobe.
+# Continuous integration for pace.
 #
 # Red line: CI never runs a real bandwidth measurement. `make test-offline`
 # exercises fixtures and fake helpers only (see make/test.mk and
@@ -71,5 +71,5 @@ jobs:
       - name: go build
         run: go build ./...
 
-      - name: Build soundprobe binary
-        run: go build ./cmd/soundprobe
+      - name: Build pace binary
+        run: go build ./cmd/pace

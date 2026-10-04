@@ -4,14 +4,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/soundadam/soundprobe/internal/preferences"
+	"github.com/soundadam/pace/internal/preferences"
 )
 
 func TestSetupChoosesLanguageAndDailyStations(t *testing.T) {
 	setup := newSetupModel("test", preferences.DefaultConfig())
 	view := setup.View().Content
-	if !strings.Contains(view, "soundprobe") {
-		t.Fatal("language screen does not show lowercase soundprobe title")
+	if !strings.Contains(view, "pace") {
+		t.Fatal("language screen does not show lowercase pace title")
 	}
 	if !strings.Contains(view, "中文") || !strings.Contains(view, "English") || !strings.Contains(view, ">") {
 		t.Fatalf("language screen missing Teaway select chrome:\n%s", view)

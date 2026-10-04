@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/pace/internal/model"
 )
 
 type Family string

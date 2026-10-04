@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/consent"
-	"github.com/soundadam/soundprobe/internal/exporter"
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/preferences"
-	"github.com/soundadam/soundprobe/internal/provider"
-	"github.com/soundadam/soundprobe/internal/provider/ookla"
-	"github.com/soundadam/soundprobe/internal/storage"
-	"github.com/soundadam/soundprobe/internal/target"
-	"github.com/soundadam/soundprobe/internal/ui"
+	"github.com/soundadam/pace/internal/consent"
+	"github.com/soundadam/pace/internal/exporter"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/preferences"
+	"github.com/soundadam/pace/internal/provider"
+	"github.com/soundadam/pace/internal/provider/ookla"
+	"github.com/soundadam/pace/internal/storage"
+	"github.com/soundadam/pace/internal/target"
+	"github.com/soundadam/pace/internal/ui"
 )
 
 type progressRenderer interface {
@@ -113,7 +113,7 @@ func (app *App) setDefaults() {
 	}
 }
 
-// executeBare handles `soundprobe` without a subcommand: an interactive
+// executeBare handles `pace` without a subcommand: an interactive
 // station selector on a terminal, or the default plan otherwise.
 func (app *App) executeBare(ctx context.Context, jsonMode bool) int {
 	if app.StdinTTY && app.StdoutTTY && !jsonMode {
@@ -262,7 +262,7 @@ func (app *App) executeMeasurementPlan(ctx context.Context, command model.Comman
 				if containsProvider(request.Targets, requested) {
 					continue
 				}
-				fmt.Fprintf(app.Err, "soundprobe: optional target %s is unavailable; continuing without it (see `soundprobe doctor --json`)\n", target.Label(requested))
+				fmt.Fprintf(app.Err, "pace: optional target %s is unavailable; continuing without it (see `pace doctor --json`)\n", target.Label(requested))
 			}
 		}
 		// Optional helpers may be removed during preparation. Keep consent,
@@ -354,16 +354,16 @@ func runCommand(ctx context.Context, name string, args []string, stdout, stderr 
 
 // offerOoklaInstall provides a narrow, explicit repair path for the common
 // case where Homebrew's Python speedtest-cli occupies the speedtest name.
-// soundprobe never installs this helper during a combined/default run, never
+// pace never installs this helper during a combined/default run, never
 // executes a shell, and never removes an existing formula automatically.
 func (app *App) offerOoklaInstall(ctx context.Context, cause error) (bool, error) {
 	fmt.Fprintf(app.Out, "Ookla provider unavailable: %s\n\n", cause)
-	fmt.Fprintln(app.Out, "soundprobe does not maintain or bundle the Ookla protocol.")
+	fmt.Fprintln(app.Out, "pace does not maintain or bundle the Ookla protocol.")
 	fmt.Fprintf(app.Out, "Official download: %s\n", ookla.OfficialInstallURL)
 
 	if _, err := app.LookupCommand("brew"); err != nil {
 		fmt.Fprintln(app.Out, "Homebrew was not found, so no command will be run automatically.")
-		fmt.Fprintln(app.Out, "Install the official CLI from the page above, then retry `soundprobe ookla`.")
+		fmt.Fprintln(app.Out, "Install the official CLI from the page above, then retry `pace ookla`.")
 		return false, nil
 	}
 
@@ -674,7 +674,7 @@ func (app *App) renderDoctor(checks, optionalChecks map[string]string, consentAc
 		}
 		return styles.Warn("false")
 	}
-	fmt.Fprintln(out, styles.Title("soundprobe "+app.Version+" diagnostics"))
+	fmt.Fprintln(out, styles.Title("pace "+app.Version+" diagnostics"))
 	writeAligned(out, [][]string{
 		{"Campus", readiness(checks["campus"], false)},
 		{"M-Lab", readiness(checks["mlab"], false)},
@@ -747,7 +747,7 @@ func (app *App) ensureMLabConsent(jsonMode bool) int {
 		return 0
 	}
 	if jsonMode || !app.StdinTTY {
-		return app.fail(jsonMode, "consent_required", "M-Lab consent is required; run `soundprobe consent accept` interactively", 1)
+		return app.fail(jsonMode, "consent_required", "M-Lab consent is required; run `pace consent accept` interactively", 1)
 	}
 	return app.promptAndAcceptConsent(jsonMode)
 }
@@ -780,7 +780,7 @@ func (app *App) promptAndAcceptConsent(jsonMode bool) int {
 func (app *App) renderSummary(summary model.RunSummary) {
 	out, styles := app.humanOutput()
 	fmt.Fprintf(out, "%s · %s · %s\n",
-		styles.Title("soundprobe "+summary.ToolVersion),
+		styles.Title("pace "+summary.ToolVersion),
 		styles.Status(string(summary.Status)),
 		styles.Dim(formatDuration(summary.EndedAt.Sub(summary.StartedAt))),
 	)
@@ -850,7 +850,7 @@ func (app *App) fail(jsonMode bool, code, message string, exitCode int) int {
 			"error": map[string]string{"code": code, "message": message},
 		})
 	} else {
-		fmt.Fprintf(app.Err, "soundprobe: %s\n", message)
+		fmt.Fprintf(app.Err, "pace: %s\n", message)
 	}
 	return exitCode
 }

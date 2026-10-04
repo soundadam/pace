@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/pace/internal/model"
 )
 
 var errNoResult = errors.New("LibreSpeed returned no measurement result")

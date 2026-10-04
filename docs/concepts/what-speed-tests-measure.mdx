@@ -93,7 +93,7 @@ RPM 是"越高越好"的指标。IETF 草案给出的大致分级：
 | 1000 – 6000 | 60 – 10 ms | 好（Good） |
 | > 6000 | < 10 ms | 极好（Excellent） |
 
-soundprobe 的 `apple` 目标（macOS）直接呈现 `networkQuality` 的总体、
+pace 的 `apple` 目标（macOS）直接呈现 `networkQuality` 的总体、
 下行、上行三个 RPM 值，字段为 `responsivenessRpm`、
 `downloadResponsivenessRpm`、`uploadResponsivenessRpm`。
 
@@ -122,6 +122,6 @@ soundprobe 的 `apple` 目标（macOS）直接呈现 `networkQuality` 的总体�
 （校内/公网/境外）、不同地址族（IPv4/IPv6）上的表现本来就不同，压成
 一个数字后你反而无法回答"到底哪里慢"。
 
-所以 soundprobe 的选择是：**每个目标独立回答一个问题，每个指标如实
+所以 pace 的选择是：**每个目标独立回答一个问题，每个指标如实
 呈现，不打分。**各目标具体回答什么问题，见
-[如何读懂 soundprobe 的结果](/concepts/reading-results)。
+[如何读懂 pace 的结果](/concepts/reading-results)。

@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/helper"
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/provider"
+	"github.com/soundadam/pace/internal/helper"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/provider"
 )
 
 func TestRunnerMeasuresIPv4WithExactArguments(t *testing.T) {
@@ -94,7 +94,7 @@ func TestTargetRunnerUsesPinnedExternalStationIdentity(t *testing.T) {
 
 func TestRunnerReportsProgressJSON(t *testing.T) {
 	runner, _ := newFakeRunner(t, "testdata/librespeed-success-ipv4.json", HelperVersion, 0, "")
-	t.Setenv("SOUNDPROBE_FAKE_PROGRESS", strings.Join([]string{
+	t.Setenv("PACE_FAKE_PROGRESS", strings.Join([]string{
 		`{"type":"progress","test":"download","elapsed_ms":1000,"bytes":6250000,"mbps":50}`,
 		`{"type":"progress","test":"upload","elapsed_ms":1000,"bytes":625000,"mbps":5}`,
 	}, "\n"))
@@ -131,7 +131,7 @@ func TestRunnerReportsProgressJSON(t *testing.T) {
 
 func TestRunnerRejectsMalformedProgressJSON(t *testing.T) {
 	runner, _ := newFakeRunner(t, "testdata/librespeed-success-ipv4.json", HelperVersion, 0, "")
-	t.Setenv("SOUNDPROBE_FAKE_PROGRESS", `{"type":"progress","test":"download","elapsed_ms":1000,"bytes":1,"mbps":1,"extra":true}`)
+	t.Setenv("PACE_FAKE_PROGRESS", `{"type":"progress","test":"download","elapsed_ms":1000,"bytes":1,"mbps":1,"extra":true}`)
 	_, err := runner.Measure(context.Background(), provider.Request{Command: model.CommandCampus})
 	if err == nil || !strings.Contains(err.Error(), "parse LibreSpeed progress output") {
 		t.Fatalf("error = %v", err)
@@ -148,7 +148,7 @@ func TestRunnerRejectsWrongHelperVersion(t *testing.T) {
 
 func TestRunnerTimesOutVersionProbe(t *testing.T) {
 	runner, _ := newFakeRunner(t, "testdata/librespeed-success-ipv4.json", HelperVersion, 0, "")
-	t.Setenv("SOUNDPROBE_FAKE_VERSION_SLEEP", "1")
+	t.Setenv("PACE_FAKE_VERSION_SLEEP", "1")
 	runner.VersionTimeout = 25 * time.Millisecond
 	_, err := runner.Measure(context.Background(), provider.Request{Command: model.CommandCampus})
 	if !errors.Is(err, provider.ErrUnavailable) || !strings.Contains(err.Error(), "version probe timed out") {
@@ -229,7 +229,7 @@ func TestValidateServerListRejectsUnsafeScheme(t *testing.T) {
 
 func TestRunnerTimesOutMeasurement(t *testing.T) {
 	runner, _ := newFakeRunner(t, "", HelperVersion, 0, "")
-	t.Setenv("SOUNDPROBE_FAKE_SLEEP", "1")
+	t.Setenv("PACE_FAKE_SLEEP", "1")
 	runner.Timeout = 25 * time.Millisecond
 	measurement, err := runner.Measure(context.Background(), provider.Request{Command: model.CommandCampus})
 	if err != nil {
@@ -242,7 +242,7 @@ func TestRunnerTimesOutMeasurement(t *testing.T) {
 
 func TestRunnerPreservesCancellation(t *testing.T) {
 	runner, _ := newFakeRunner(t, "", HelperVersion, 0, "")
-	t.Setenv("SOUNDPROBE_FAKE_SLEEP", "5")
+	t.Setenv("PACE_FAKE_SLEEP", "5")
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(25 * time.Millisecond)
@@ -260,8 +260,8 @@ func TestRunnerPreservesCancellation(t *testing.T) {
 func newFakeRunner(t *testing.T, fixture, version string, exitCode int, literalOutput string) (*Runner, string) {
 	t.Helper()
 	root := t.TempDir()
-	executable := filepath.Join(root, "prefix", "bin", "soundprobe")
-	helperPath := filepath.Join(root, "prefix", "libexec", "soundprobe", HelperName)
+	executable := filepath.Join(root, "prefix", "bin", "pace")
+	helperPath := filepath.Join(root, "prefix", "libexec", "pace", HelperName)
 	argsPath := filepath.Join(root, "args.txt")
 	stdinPath := filepath.Join(root, "stdin.json")
 	writeTestExecutable(t, executable, "#!/bin/sh\nexit 0\n")
@@ -276,19 +276,19 @@ func newFakeRunner(t *testing.T, fixture, version string, exitCode int, literalO
 	}
 	script := `#!/bin/sh
 if [ "${1:-}" = "--version" ]; then
-  if [ -n "${SOUNDPROBE_FAKE_VERSION_SLEEP:-}" ]; then
-    exec sleep "$SOUNDPROBE_FAKE_VERSION_SLEEP"
+  if [ -n "${PACE_FAKE_VERSION_SLEEP:-}" ]; then
+    exec sleep "$PACE_FAKE_VERSION_SLEEP"
   fi
   printf 'librespeed-cli %s (built on test)\n'
   exit 0
 fi
-printf '%%s\n' "$@" > "$SOUNDPROBE_FAKE_ARGS"
-cat > "$SOUNDPROBE_FAKE_STDIN"
-if [ -n "${SOUNDPROBE_FAKE_SLEEP:-}" ]; then
-  exec sleep "$SOUNDPROBE_FAKE_SLEEP"
+printf '%%s\n' "$@" > "$PACE_FAKE_ARGS"
+cat > "$PACE_FAKE_STDIN"
+if [ -n "${PACE_FAKE_SLEEP:-}" ]; then
+  exec sleep "$PACE_FAKE_SLEEP"
 fi
-if [ -n "${SOUNDPROBE_FAKE_PROGRESS:-}" ]; then
-  printf '%%s\n' "$SOUNDPROBE_FAKE_PROGRESS" >&2
+if [ -n "${PACE_FAKE_PROGRESS:-}" ]; then
+  printf '%%s\n' "$PACE_FAKE_PROGRESS" >&2
 fi
 if [ -n "%s" ]; then
   cat "%s"
@@ -302,8 +302,8 @@ exit %d
 `
 	script = fmt.Sprintf(script, version, fixturePath, fixturePath, literalOutput, exitCode, literalOutput, exitCode)
 	writeTestExecutable(t, helperPath, script)
-	t.Setenv("SOUNDPROBE_FAKE_ARGS", argsPath)
-	t.Setenv("SOUNDPROBE_FAKE_STDIN", stdinPath)
+	t.Setenv("PACE_FAKE_ARGS", argsPath)
+	t.Setenv("PACE_FAKE_STDIN", stdinPath)
 
 	clock := time.Date(2026, 7, 21, 8, 0, 0, 0, time.UTC)
 	return &Runner{

@@ -7,8 +7,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/soundadam/soundprobe/internal/preferences"
-	"github.com/soundadam/soundprobe/internal/target"
+	"github.com/soundadam/pace/internal/preferences"
+	"github.com/soundadam/pace/internal/target"
 )
 
 var ErrSetupCancelled = errors.New("setup cancelled")

@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/pace/internal/model"
 )
 
 type result struct {

@@ -1,11 +1,11 @@
 # typed: strict
 # frozen_string_literal: true
 
-# Formula for the soundprobe network measurement CLI.
-class Soundprobe < Formula
-  desc "Education-network-first macOS network path measurements"
-  homepage "https://github.com/soundadam/soundprobe"
-  url "https://github.com/soundadam/soundprobe/releases/download/v@VERSION@/soundprobe-@VERSION@.tar.gz"
+# Formula for the pace network measurement CLI.
+class Pace < Formula
+  desc "Speed tests for proxies, campus intranets and CERNET"
+  homepage "https://github.com/soundadam/pace"
+  url "https://github.com/soundadam/pace/releases/download/v@VERSION@/pace-@VERSION@.tar.gz"
   sha256 "@SOURCE_SHA256@"
   license all_of: ["MIT", "LGPL-3.0-only", "Apache-2.0"]
   depends_on "go" => :build
@@ -18,13 +18,13 @@ class Soundprobe < Formula
   def install
     version_ldflags = %W[
       -s -w
-      -X github.com/soundadam/soundprobe/internal/buildinfo.Version=#{version}
-      -X github.com/soundadam/soundprobe/internal/buildinfo.Commit=v#{version}
-      -X github.com/soundadam/soundprobe/internal/buildinfo.Date=1970-01-01T00:00:00Z
+      -X github.com/soundadam/pace/internal/buildinfo.Version=#{version}
+      -X github.com/soundadam/pace/internal/buildinfo.Commit=v#{version}
+      -X github.com/soundadam/pace/internal/buildinfo.Date=1970-01-01T00:00:00Z
     ].join(" ")
-    system "go", "build", *std_go_args(ldflags: version_ldflags), "./cmd/soundprobe"
+    system "go", "build", *std_go_args(ldflags: version_ldflags), "./cmd/pace"
 
-    helper_dir = libexec/"soundprobe"
+    helper_dir = libexec/"pace"
     helper_dir.mkpath
 
     cd "components/librespeed-cli" do
@@ -42,7 +42,7 @@ class Soundprobe < Formula
     resource("ndt7-client").stage do
       ldflags = %w[
         -s -w -buildid=
-        -X main.ClientName=soundprobe
+        -X main.ClientName=pace
         -X main.ClientVersion=0.10.1
       ].join(" ")
       system "go", "build", "-trimpath", "-ldflags", ldflags,
@@ -55,13 +55,13 @@ class Soundprobe < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("#{bin}/soundprobe version")
+    assert_match version.to_s, shell_output("#{bin}/pace version")
 
-    diagnostics = shell_output("#{bin}/soundprobe doctor --json")
+    diagnostics = shell_output("#{bin}/pace doctor --json")
     assert_match '"ready":true', diagnostics
     assert_match '"campus":"ready"', diagnostics
     assert_match '"mlab":"ready"', diagnostics
 
-    assert_equal "[]\n", shell_output("#{bin}/soundprobe history --json")
+    assert_equal "[]\n", shell_output("#{bin}/pace history --json")
   end
 end

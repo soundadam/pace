@@ -35,7 +35,7 @@ icon: "scale-unbalanced"
 排名**。用 210 Mbps（单流）和 480 Mbps（多流）比较大小没有意义；
 有意义的是分别跟踪它们随时间的变化。
 
-另外一个常见误解：soundprobe 教育网目标的"三流"是**三个并发 HTTP
+另外一个常见误解：pace 教育网目标的"三流"是**三个并发 HTTP
 请求**，不是三条物理线路，也不表示服务器带宽异常大。
 </Warning>
 
@@ -53,7 +53,7 @@ icon: "scale-unbalanced"
   服务边缘节点的路径。
 
 IPv4 和 IPv6 也可能走**完全不同的路由**——同一站点两个地址族的结果
-差几倍并不罕见，这正是 soundprobe 把它们作为独立目标分别测量的原因。
+差几倍并不罕见，这正是 pace 把它们作为独立目标分别测量的原因。
 
 ### 教育网（CERNET）的特殊性
 
@@ -109,7 +109,7 @@ IPv4 和 IPv6 也可能走**完全不同的路由**——同一站点两个地�
    路径可能有丢包或高 RTT；空闲 ping 好而 RPM 低 → bufferbloat；
 3. **不要排名**：不同方法的绝对值放在一起排序没有意义。
 
-soundprobe 把每个目标的方法（`librespeed-three-stream`、
+pace 把每个目标的方法（`librespeed-three-stream`、
 `ndt7-single-stream` 等）写进每条结果，就是为了让你始终知道每个数字是
 "用什么方法、对哪台服务器"测出来的。下一步：
-[如何读懂 soundprobe 的结果](/concepts/reading-results)。
+[如何读懂 pace 的结果](/concepts/reading-results)。

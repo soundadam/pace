@@ -6,38 +6,38 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/soundadam/soundprobe/internal/buildinfo"
-	"github.com/soundadam/soundprobe/internal/cli"
-	"github.com/soundadam/soundprobe/internal/consent"
-	"github.com/soundadam/soundprobe/internal/helper"
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/network"
-	"github.com/soundadam/soundprobe/internal/preferences"
-	"github.com/soundadam/soundprobe/internal/provider"
-	"github.com/soundadam/soundprobe/internal/provider/campus"
-	"github.com/soundadam/soundprobe/internal/provider/mlab"
-	"github.com/soundadam/soundprobe/internal/provider/networkquality"
-	"github.com/soundadam/soundprobe/internal/provider/ookla"
-	"github.com/soundadam/soundprobe/internal/storage"
-	"github.com/soundadam/soundprobe/internal/target"
+	"github.com/soundadam/pace/internal/buildinfo"
+	"github.com/soundadam/pace/internal/cli"
+	"github.com/soundadam/pace/internal/consent"
+	"github.com/soundadam/pace/internal/helper"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/network"
+	"github.com/soundadam/pace/internal/preferences"
+	"github.com/soundadam/pace/internal/provider"
+	"github.com/soundadam/pace/internal/provider/campus"
+	"github.com/soundadam/pace/internal/provider/mlab"
+	"github.com/soundadam/pace/internal/provider/networkquality"
+	"github.com/soundadam/pace/internal/provider/ookla"
+	"github.com/soundadam/pace/internal/storage"
+	"github.com/soundadam/pace/internal/target"
 )
 
 func main() {
 	historyDir, err := storage.DefaultHistoryDir()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "soundprobe: determine history directory: %v\n", err)
+		fmt.Fprintf(os.Stderr, "pace: determine history directory: %v\n", err)
 		os.Exit(1)
 	}
 
 	consentPath, err := consent.DefaultPath()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "soundprobe: determine consent path: %v\n", err)
+		fmt.Fprintf(os.Stderr, "pace: determine consent path: %v\n", err)
 		os.Exit(1)
 	}
 
 	preferencesPath, err := preferences.DefaultPath()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "soundprobe: determine preferences path: %v\n", err)
+		fmt.Fprintf(os.Stderr, "pace: determine preferences path: %v\n", err)
 		os.Exit(1)
 	}
 

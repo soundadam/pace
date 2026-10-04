@@ -8,8 +8,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/provider"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/provider"
 )
 
 type eventEnvelope struct {

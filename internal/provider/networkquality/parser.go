@@ -8,7 +8,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/pace/internal/model"
 )
 
 type report struct {

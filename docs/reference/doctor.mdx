@@ -1,15 +1,15 @@
 ---
 title: "doctor 排障"
-description: "读懂 soundprobe doctor 的输出，处理常见环境问题"
+description: "读懂 pace doctor 的输出，处理常见环境问题"
 icon: "stethoscope"
 ---
 
-`soundprobe doctor` 是排障入口：它检查核心与可选 provider 的就绪状态、
+`pace doctor` 是排障入口：它检查核心与可选 provider 的就绪状态、
 M-Lab 同意和本地存储位置，**不执行任何带宽测试**。
 
 ```sh
-soundprobe doctor
-soundprobe doctor --json
+pace doctor
+pace doctor --json
 ```
 
 ## 输出字段
@@ -18,7 +18,7 @@ JSON 模式的字段：
 
 | 字段 | 说明 |
 | --- | --- |
-| `version` | soundprobe 版本 |
+| `version` | pace 版本 |
 | `ready` | 核心 provider（`campus`、`mlab`）是否全部就绪；为 `false` 时退出码为 `1` |
 | `combinedReady` | `ready` 且 M-Lab 同意已接受——默认组合计划可直接非交互运行 |
 | `providers` | 核心 provider 状态：`campus`、`mlab`，就绪为 `"ready"`，否则为具体错误信息 |
@@ -32,21 +32,21 @@ JSON 模式的字段：
 
 <AccordionGroup>
   <Accordion title="campus / mlab 报 helper 缺失">
-    基础测量依赖 soundprobe 发布的 `librespeed-cli` 和 `ndt7-client`
-    helper。Homebrew 安装会放在 `../libexec/soundprobe/`；自行构建时
-    需要把 helper 放进仓库 `.tools/bin` 或按文档配置 PATH。soundprobe
+    基础测量依赖 pace 发布的 `librespeed-cli` 和 `ndt7-client`
+    helper。Homebrew 安装会放在 `../libexec/pace/`；自行构建时
+    需要把 helper 放进仓库 `.tools/bin` 或按文档配置 PATH。pace
     **不会**自动下载缺失的 helper。见[安装](/getting-started/installation)
     的 helper 机制一节。
   </Accordion>
   <Accordion title="consentAccepted 为 false，非交互运行失败">
     这是 fail-closed 的预期行为。在交互终端执行
-    `soundprobe consent accept` 后重试。不含 M-Lab 的计划不受影响。
+    `pace consent accept` 后重试。不含 M-Lab 的计划不受影响。
     见 [M-Lab 隐私与同意](/reference/mlab-privacy)。
   </Accordion>
   <Accordion title="ookla 报错：找到的是 Python speedtest-cli">
-    PATH 上名为 `speedtest` 的程序不是官方 Ookla CLI。soundprobe 会
+    PATH 上名为 `speedtest` 的程序不是官方 Ookla CLI。pace 会
     检查所有 PATH 候选并只接受官方标识；可用
-    `SOUNDPROBE_OOKLA_PATH=/path/to/speedtest` 显式指定，或按
+    `PACE_OOKLA_PATH=/path/to/speedtest` 显式指定，或按
     [安装页](/getting-started/installation)的冲突处理一节重装官方
     CLI。排查：
 
@@ -57,7 +57,7 @@ JSON 模式的字段：
   </Accordion>
   <Accordion title="apple 在 Linux/Windows 上不可用">
     预期行为：`networkQuality` 是 macOS 系统组件。组合运行会自动移除
-    该可选目标并继续；只有显式 `soundprobe apple` 才会失败。
+    该可选目标并继续；只有显式 `pace apple` 才会失败。
   </Accordion>
   <Accordion title="cernet 目标不可达">
     CERNET 公共站点（`speedtest.sec.edu.cn`）当前服务不可达。该目标
@@ -67,7 +67,7 @@ JSON 模式的字段：
   <Accordion title="测量中途失败，如何定位阶段">
     每条失败测量带有稳定的 `failure.stage`：`helper`（helper 启动/
     输出问题）、`dns`、`connect`、`download`、`upload`、`timeout`。
-    结合 `soundprobe stations` 的轻量可达性探测可以快速区分"站点
+    结合 `pace stations` 的轻量可达性探测可以快速区分"站点
     不可达"与"helper 环境问题"。
   </Accordion>
 </AccordionGroup>

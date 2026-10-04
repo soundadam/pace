@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/soundadam/soundprobe/internal/model"
+	"github.com/soundadam/pace/internal/model"
 )
 
 func TestParseOfficialJSON(t *testing.T) {

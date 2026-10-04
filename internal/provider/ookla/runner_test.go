@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/provider"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/provider"
 )
 
 func TestRunnerAcceptsOfficialCLIAndDoesNotAutoAcceptTerms(t *testing.T) {
@@ -25,13 +25,13 @@ func TestRunnerAcceptsOfficialCLIAndDoesNotAutoAcceptTerms(t *testing.T) {
 	}
 	script := "#!/bin/sh\n" +
 		"if [ \"${1:-}\" = \"--version\" ]; then echo 'Speedtest by Ookla 1.2.0.84'; exit 0; fi\n" +
-		"printf '%s\\n' \"$*\" > \"$SOUNDPROBE_ARGS\"\n" +
-		"cat \"$SOUNDPROBE_FIXTURE\"\n"
+		"printf '%s\\n' \"$*\" > \"$PACE_ARGS\"\n" +
+		"cat \"$PACE_FIXTURE\"\n"
 	if err := os.WriteFile(path, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SOUNDPROBE_ARGS", argsPath)
-	t.Setenv("SOUNDPROBE_FIXTURE", fixturePath)
+	t.Setenv("PACE_ARGS", argsPath)
+	t.Setenv("PACE_FIXTURE", fixturePath)
 	runner := &Runner{Path: path}
 	if err := runner.Preflight(context.Background(), provider.Request{}); err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func TestRunnerUsesExplicitOoklaPathOverride(t *testing.T) {
 	if err := os.WriteFile(officialPath, []byte("#!/bin/sh\nif [ \"${1:-}\" = \"--version\" ]; then echo 'Speedtest by Ookla 1.2.0'; fi\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SOUNDPROBE_OOKLA_PATH", officialPath)
+	t.Setenv("PACE_OOKLA_PATH", officialPath)
 	runner := &Runner{LookupAllPath: func(string) ([]string, error) {
 		return nil, os.ErrNotExist
 	}}

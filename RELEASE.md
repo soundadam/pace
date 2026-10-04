@@ -1,4 +1,4 @@
-# Releasing soundprobe
+# Releasing pace
 
 Releases are automated: push a `v*` tag, CI runs GoReleaser, and the tap
 updates itself.
@@ -14,13 +14,13 @@ GoReleaser (.goreleaser.yaml)
   ├─ builds darwin/linux/windows × amd64/arm64 (CGO_ENABLED=0)
   ├─ archives (tar.gz, zip on Windows) + checksums.txt
   ├─ GitHub Release with a changelog grouped by feat/fix/docs
-  └─ pushes Casks/soundprobe.rb to soundadam/homebrew-tap
+  └─ pushes Casks/pace.rb to soundadam/homebrew-tap
 ```
 
 Users install with:
 
 ```sh
-brew install --cask soundadam/tap/soundprobe
+brew install --cask soundadam/tap/pace
 ```
 
 ## Principles (unchanged from the manual era)
@@ -34,7 +34,7 @@ brew install --cask soundadam/tap/soundprobe
 - **Release assets are immutable.** Once a cask or Formula references a
   checksum, never edit or replace the asset; ship a new version instead.
 - **Helper licensing stays explicit.** The archives contain only the MIT
-  soundprobe binary plus `LICENSE`, `README.md`, and
+  pace binary plus `LICENSE`, `README.md`, and
   `THIRD_PARTY_NOTICES.md`. The LibreSpeed helper (LGPL-3.0-only) and ndt7
   helper (Apache-2.0) are never bundled or auto-downloaded; the cask
   caveats say so.
@@ -43,13 +43,14 @@ brew install --cask soundadam/tap/soundprobe
 
 - A public `soundadam/homebrew-tap` repository must exist.
 - Configure the `HOMEBREW_TAP_GITHUB_TOKEN` secret in
-  `soundadam/soundprobe` (Settings > Secrets and variables > Actions): a
+  `soundadam/pace` (Settings > Secrets and variables > Actions): a
   fine-grained PAT with "Contents: read and write" on
   `soundadam/homebrew-tap`. Details are commented in
   [.github/workflows/release.yml](.github/workflows/release.yml).
-- If the tap previously shipped `Formula/soundprobe.rb`, add a
-  `tap_migrations.json` at the tap root (`{"soundprobe": "soundprobe"}`)
-  and remove the old Formula so users upgrade to the cask cleanly.
+- The cask was renamed from `soundprobe` to `pace` in v0.5.0. The tap keeps
+  `"soundprobe": "pace"` in `cask_renames.json` (and no longer ships
+  `Casks/soundprobe.rb`) so `brew upgrade` moves existing installs to
+  `pace`.
 
 ## 2. Before tagging
 
@@ -59,7 +60,7 @@ On a supported macOS machine:
 make test-offline
 GOTOOLCHAIN=auto go test -race ./...
 make build
-./bin/soundprobe doctor --json
+./bin/pace doctor --json
 ```
 
 Perform the real operator tests from [TESTING.md](TESTING.md) (NJU IPv4 /
@@ -88,7 +89,7 @@ For version `0.3.0`:
 ```sh
 git switch main
 git pull --ff-only
-git tag -a v0.3.0 -m "soundprobe v0.3.0"
+git tag -a v0.3.0 -m "pace v0.3.0"
 git push origin v0.3.0
 ```
 
@@ -102,15 +103,15 @@ When the `Release` workflow finishes:
 - the GitHub Release page and asset URLs return HTTP 200 anonymously;
 - `checksums.txt` matches the uploaded archives;
 - `soundadam/homebrew-tap` received a commit updating
-  `Casks/soundprobe.rb` with the new version and sha256.
+  `Casks/pace.rb` with the new version and sha256.
 
 Then, on macOS:
 
 ```sh
 brew update
-brew install --cask soundadam/tap/soundprobe
-soundprobe version
-soundprobe doctor
+brew install --cask soundadam/tap/pace
+pace version
+pace doctor
 ```
 
 Cask-level checks are offline; a real measurement afterwards is optional
@@ -129,14 +130,14 @@ make release VERSION=0.3.0
 ```
 
 This runs [scripts/build-release.sh](scripts/build-release.sh) to produce a
-deterministic source `dist/soundprobe-0.3.0.tar.gz` and renders the
+deterministic source `dist/pace-0.3.0.tar.gz` and renders the
 source-build Formula from
-[packaging/homebrew/soundprobe.rb.tmpl](packaging/homebrew/soundprobe.rb.tmpl)
+[packaging/homebrew/pace.rb.tmpl](packaging/homebrew/pace.rb.tmpl)
 via
 [scripts/render-homebrew-formula.sh](scripts/render-homebrew-formula.sh).
 Upload the archive and its `.sha256` to the GitHub Release by hand, then
-copy the Formula into the tap as `Formula/soundprobe.rb`. That Formula
-builds soundprobe and both helpers from source and carries
+copy the Formula into the tap as `Formula/pace.rb`. That Formula
+builds pace and both helpers from source and carries
 `license all_of: ["MIT", "LGPL-3.0-only", "Apache-2.0"]`; its `test do`
 block is offline. `scripts/test-homebrew-template.sh` and
 `scripts/test-release-artifact.sh` keep this path exercised in
@@ -144,7 +145,7 @@ block is offline. `scripts/test-homebrew-template.sh` and
 
 ## 6. `homebrew/core` consideration
 
-Do not advertise `brew install soundprobe` from core until Homebrew accepts
+Do not advertise `brew install pace` from core until Homebrew accepts
 the Formula. A future submission should demonstrate:
 
 - a public, stable, immutable release;
@@ -153,7 +154,7 @@ the Formula. A future submission should demonstrate:
 - checksummed and locked source dependencies;
 - meaningful offline Formula tests;
 - no runtime downloads or self-updates;
-- clear licensing for soundprobe and both installed helper executables.
+- clear licensing for pace and both installed helper executables.
 
 Until then, the supported installation path is through
 `soundadam/homebrew-tap`.

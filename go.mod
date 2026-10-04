@@ -1,4 +1,4 @@
-module github.com/soundadam/soundprobe
+module github.com/soundadam/pace
 
 go 1.25.8
 

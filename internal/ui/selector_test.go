@@ -7,9 +7,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/preferences"
-	"github.com/soundadam/soundprobe/internal/target"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/preferences"
+	"github.com/soundadam/pace/internal/target"
 )
 
 func TestSelectorRecommendsCampusWhenReachable(t *testing.T) {
@@ -21,7 +21,7 @@ func TestSelectorRecommendsCampusWhenReachable(t *testing.T) {
 		t.Fatalf("selection = %#v", selector.selected)
 	}
 	view := selector.View().Content
-	for _, expected := range []string{"soundprobe", "Select measurement targets", "NJU Campus", "M-Lab", "ipv4", ">", "✓", "space", "enter"} {
+	for _, expected := range []string{"pace", "Select measurement targets", "NJU Campus", "M-Lab", "ipv4", ">", "✓", "space", "enter"} {
 		if !strings.Contains(view, expected) {
 			t.Fatalf("view missing %q:\n%s", expected, view)
 		}

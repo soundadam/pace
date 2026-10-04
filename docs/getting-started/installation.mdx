@@ -8,62 +8,62 @@ icon: "download"
 
 ```sh
 brew tap soundadam/tap
-brew install soundprobe
-soundprobe doctor --json
+brew install pace
+pace doctor --json
 ```
 
 Homebrew Formula 当前只覆盖 macOS。
 
 ## Linux / Windows
 
-使用对应平台的 [release 二进制](https://github.com/soundadam/soundprobe/releases)，
+使用对应平台的 [release 二进制](https://github.com/soundadam/pace/releases)，
 或从仓库源码构建核心 CLI。构建不需要 Apple SDK：
 
 ```sh
-GOOS=linux   GOARCH=amd64 go build -o soundprobe ./cmd/soundprobe
-GOOS=windows GOARCH=amd64 go build -o soundprobe.exe ./cmd/soundprobe
+GOOS=linux   GOARCH=amd64 go build -o pace ./cmd/pace
+GOOS=windows GOARCH=amd64 go build -o pace.exe ./cmd/pace
 ```
 
 <Warning>
-基础测量（NJU Campus、M-Lab）需要 soundprobe 发布的 LibreSpeed/ndt7
+基础测量（NJU Campus、M-Lab）需要 pace 发布的 LibreSpeed/ndt7
 helper。缺少 helper 时 `doctor` 会明确报告缺失，而不是下载未知程序。
 自行构建时请同时准备 helper（见下节）。
 </Warning>
 
 ## helper 机制
 
-soundprobe 本体是 MIT 许可的单一二进制；实际测量由独立的 helper 子进程
+pace 本体是 MIT 许可的单一二进制；实际测量由独立的 helper 子进程
 完成，通过进程接口调用，不静态链接：
 
 | helper | 版本 | 许可 | 来源 |
 | --- | --- | --- | --- |
-| `librespeed-cli` | v1.0.13-campus.1（基于上游 v1.0.13） | LGPL-3.0-only | 随 soundprobe 发布，源码在仓库 `components/librespeed-cli` |
-| `ndt7-client` | v0.10.1 | Apache-2.0 | 随 soundprobe 发布，按固定版本与 SHA-256 构建 |
+| `librespeed-cli` | v1.0.13-campus.1（基于上游 v1.0.13） | LGPL-3.0-only | 随 pace 发布，源码在仓库 `components/librespeed-cli` |
+| `ndt7-client` | v0.10.1 | Apache-2.0 | 随 pace 发布，按固定版本与 SHA-256 构建 |
 | `networkQuality` | 随 macOS | Apple 系统组件 | macOS 自带 `/usr/bin/networkQuality`，不捆绑、不下载 |
 | `speedtest`（Ookla） | 用户安装 | Ookla 条款 | 仅接受官方 CLI，可选 |
 
 helper 的解析顺序：
 
-1. 相对可执行文件的 `../libexec/soundprobe/`（正式安装位置）；
+1. 相对可执行文件的 `../libexec/pace/`（正式安装位置）；
 2. 仓库本地 `.tools/bin`（开发环境）；
 3. 文档化的 PATH 回退。
 
-soundprobe 会校验 helper 的确切版本并写入结果；存在固定版本的 libexec
+pace 会校验 helper 的确切版本并写入结果；存在固定版本的 libexec
 helper 时不会静默改用 PATH 上更新的版本。
 
 ## Apple networkQuality（macOS 自带）
 
-macOS 自带 `/usr/bin/networkQuality`。soundprobe 只调用它，不下载、不捆绑，
+macOS 自带 `/usr/bin/networkQuality`。pace 只调用它，不下载、不捆绑，
 也不替用户接受 Apple 或第三方条款。Apple 对 NetworkQuality 与负载下
 响应性的说明见 [WWDC21 官方视频](https://developer.apple.com/videos/play/wwdc2021/10239/)。
 
 Linux/Windows 上没有该 helper：组合运行会在测速前自动移除这个可选目标并
-继续执行其余目标；显式运行 `soundprobe apple` 则在测速前失败，不会静默
+继续执行其余目标；显式运行 `pace apple` 则在测速前失败，不会静默
 替换成别的工具。
 
 ## Ookla Speedtest CLI（可选）
 
-soundprobe 只支持 **Ookla 官方 CLI**，不维护 Python `speedtest-cli`，也不把
+pace 只支持 **Ookla 官方 CLI**，不维护 Python `speedtest-cli`，也不把
 Ookla 协议实现降级到自己的代码里。安装方式和许可以
 [Ookla 官方 CLI 页面](https://www.speedtest.net/apps/cli)为准。官方
 Homebrew 命令：
@@ -76,7 +76,7 @@ speedtest --version
 ```
 
 <Note>
-soundprobe 不会自动安装、升级或随自身发布 Ookla helper，也不会自动传入
+pace 不会自动安装、升级或随自身发布 Ookla helper，也不会自动传入
 `--accept-license` 或 `--accept-gdpr`。第一次运行若需要接受条款，请直接
 按 Ookla 的提示操作。
 </Note>
@@ -84,20 +84,20 @@ soundprobe 不会自动安装、升级或随自身发布 Ookla helper，也不�
 ### 与 Python speedtest-cli 的冲突
 
 Homebrew 中名为 `speedtest-cli` 的 Python 工具**不是**官方 Ookla CLI，且
-上游已停止维护。soundprobe 会检查 `speedtest --version` 的官方标识并拒绝
+上游已停止维护。pace 会检查 `speedtest --version` 的官方标识并拒绝
 它；它会检查 PATH 中所有同名候选，而不是盲目采用第一个。也可以显式指定
 官方二进制：
 
 ```sh
-export SOUNDPROBE_OOKLA_PATH=/path/to/speedtest
+export PACE_OOKLA_PATH=/path/to/speedtest
 ```
 
-当你在交互终端里显式运行 `soundprobe ookla` 且检测到冲突时，soundprobe
+当你在交互终端里显式运行 `pace ookla` 且检测到冲突时，pace
 会显示上面的官方 Homebrew 安装序列并等待你按 Enter 确认；只有按 Enter
 才会逐条执行这些固定参数，输入其他内容会取消。组合运行、重定向和
 `--json` 模式不会暂停安装，只报告该可选 provider 不可用。
 
-soundprobe 不会自动卸载任何已有 formula。如果 Homebrew 报告冲突且你确认
+pace 不会自动卸载任何已有 formula。如果 Homebrew 报告冲突且你确认
 要删除，请自行执行：
 
 ```sh
@@ -111,7 +111,7 @@ brew install speedtest --force
 ```sh
 command -v speedtest
 speedtest --version
-soundprobe doctor --json
+pace doctor --json
 ```
 
 ## 配置与历史目录
@@ -119,11 +119,9 @@ soundprobe doctor --json
 核心二进制不依赖 macOS API。各平台的配置/历史/同意记录保存在：
 
 ```text
-macOS:   ~/Library/Application Support/soundprobe/
-Linux:   ${XDG_CONFIG_HOME:-~/.config}/soundprobe/
-Windows: %AppData%\soundprobe\
+macOS:   ~/Library/Application Support/pace/
+Linux:   ${XDG_CONFIG_HOME:-~/.config}/pace/
+Windows: %AppData%\pace\
 ```
 
-如果系统中仍有早期 `njuprobe` 的历史或 M-Lab 同意记录，soundprobe 会在
-迁移完成前继续读取它们；新写入使用 `soundprobe` 目录。详见
-[JSON 输出与自动化](/reference/json-and-automation)。
+历史记录格式详见 [JSON 输出与自动化](/reference/json-and-automation)。

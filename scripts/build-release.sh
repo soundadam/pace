@@ -10,8 +10,8 @@ fi
 
 version=${1#v}
 ref=${2:-"v$version"}
-archive="$ROOT/dist/soundprobe-$version.tar.gz"
-formula="$ROOT/dist/Formula/soundprobe.rb"
+archive="$ROOT/dist/pace-$version.tar.gz"
+formula="$ROOT/dist/Formula/pace.rb"
 
 validate_version() {
   candidate=$1
@@ -63,12 +63,12 @@ commit=$(git -C "$ROOT" rev-parse --verify "$ref^{commit}")
 ensure_directory "$ROOT/dist"
 ensure_directory "$ROOT/dist/Formula"
 
-temporary_tar="$ROOT/dist/.soundprobe-$version.tar.$$"
+temporary_tar="$ROOT/dist/.pace-$version.tar.$$"
 temporary_archive="$archive.tmp.$$"
-temporary_formula="$ROOT/dist/Formula/.soundprobe.rb.$$"
+temporary_formula="$ROOT/dist/Formula/.pace.rb.$$"
 backup_archive="$archive.backup.$$"
 backup_formula="$formula.backup.$$"
-release_lock="$ROOT/dist/.soundprobe-release.lock"
+release_lock="$ROOT/dist/.pace-release.lock"
 stale_release_lock="$release_lock.stale.$$"
 release_lock_candidate=
 archive_backup_expected=0
@@ -200,7 +200,7 @@ remove_release_lock_path() {
 
 remove_orphan_lock_candidates() {
   recovered_lock=$1
-  for candidate in "$ROOT/dist"/.soundprobe-release.lock.owner.*; do
+  for candidate in "$ROOT/dist"/.pace-release.lock.owner.*; do
     if [ -f "$candidate" ] && [ ! -L "$candidate" ] && [ "$candidate" -ef "$recovered_lock" ]; then
       rm -f "$candidate" || return 1
     fi
@@ -302,7 +302,7 @@ if [ -z "$release_process_start" ]; then
   echo "build-release: cannot determine the release publication process identity" >&2
   exit 1
 fi
-release_lock_candidate=$(mktemp "$ROOT/dist/.soundprobe-release.lock.owner.XXXXXX")
+release_lock_candidate=$(mktemp "$ROOT/dist/.pace-release.lock.owner.XXXXXX")
 if ! printf '%s\n%s\n' "$$" "$release_process_start" > "$release_lock_candidate"; then
   echo "build-release: cannot prepare the release publication lock owner" >&2
   exit 1
@@ -314,7 +314,7 @@ fi
 
 git -C "$ROOT" archive \
   --format=tar \
-  --prefix="soundprobe-$version/" \
+  --prefix="pace-$version/" \
   --output="$temporary_tar" \
   "$commit"
 gzip -n -c "$temporary_tar" > "$temporary_archive"

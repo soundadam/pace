@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/soundadam/soundprobe/internal/model"
-	"github.com/soundadam/soundprobe/internal/provider"
+	"github.com/soundadam/pace/internal/model"
+	"github.com/soundadam/pace/internal/provider"
 )
 
 const (
@@ -28,7 +28,7 @@ type Runner struct {
 }
 
 func New() *Runner {
-	path := strings.TrimSpace(os.Getenv("SOUNDPROBE_NETWORKQUALITY_PATH"))
+	path := strings.TrimSpace(os.Getenv("PACE_NETWORKQUALITY_PATH"))
 	if path == "" && runtime.GOOS == "darwin" {
 		path = DefaultPath
 	}
