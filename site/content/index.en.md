@@ -27,7 +27,7 @@ modules:
   - type: snapshot
     title: Why not a speed-test website
     body: A typical speed-test site picks the ISP server closest to you, measures the best-looking stretch of the path, and hands you one number. On an education network the trouble is usually elsewhere. A campus service is unreachable, the VPN dropped, the CERNET exit is congested, or the proxy exit is slow. {title} runs every selected target in order and lists the results side by side. It never substitutes, ranks or folds them into one score.
-    note: Nanjing University's on-campus test uses `speed.nju.edu.cn`. The public CERNET test site is unreachable at the moment; {title} reports that as it is and does not swap in another site.
+    note: Nanjing University's on-campus test uses `speed.nju.edu.cn`. When a site cannot be reached, {title} reports that as it is and does not swap in another site.
     metrics:
       - value: "6"
         label: "Vantage points: NJU campus, Tongji, CERNET, M-Lab, Apple, Ookla"
@@ -42,6 +42,11 @@ modules:
     title: Campus, education network and proxy exit in one run
     index: 1/3
     lede: "`pace` opens the interactive view, and the first run asks which targets to test day to day. `nju-campus` measures the NJU campus network or campus VPN with three concurrent streams, IPv4 and IPv6 separately if you like. `tongji` is an education-network reference toward Shanghai and the Yangtze delta. `mlab` measures M-Lab from the current public exit, so with a proxy on, that exit is the proxy. Targets run one after another so they do not compete for bandwidth."
+
+  - type: media
+    image: terminal.svg
+    alt: pace run in a terminal measuring the NJU campus, CERNET and Tongji targets in one run, each with download, upload, server and status
+    caption: "A real run on the NJU campus wired network, 2026-10-04: campus, the CERNET backbone and a cross-province education link each get their own numbers."
 
   - type: section
     title: A failure is recorded as a failure

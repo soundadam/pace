@@ -28,33 +28,31 @@ Windows，Go 编写，终端界面基于 Bubble Tea 内联渲染。
 ## 终端演示
 
 ```text
-$ pace run --targets nju-campus,mlab,apple --family ipv4
-
-pace v0.4.0 · success · 34.2s
-Run 8f3c1a2b
-Network en0 · wifi · NJU-WLAN
-TARGET                METHOD                   DOWNLOAD     UPLOAD      SERVER                       STATUS
-NJU Campus IPv4       librespeed-three-stream  812.44 Mbps  93.10 Mbps  speed.nju.edu.cn             success
-M-Lab NDT7            ndt7-single-stream       203.52 Mbps  41.87 Mbps  ndt-abc12.measurement-lab    success
-Apple networkQuality  apple-networkquality     486.20 Mbps  88.31 Mbps  —                            success
+$ pace run --targets nju-campus,cernet,tongji --no-save
+pace 0.5.0 · success · 1m6.1s
+Run 8b6eb628-6b17-4e5e-a4c1-2477666182fa
+Network ens65f1 · other
+TARGET             METHOD                   DOWNLOAD     UPLOAD       SERVER                STATUS
+NJU Campus · IPv4  librespeed-three-stream  939.36 Mbps  138.46 Mbps  speed.nju.edu.cn      success
+CERNET · IPv4      librespeed-three-stream  480.81 Mbps  507.98 Mbps  speedtest.sec.edu.cn  success
+Tongji · IPv4      librespeed-three-stream  76.54 Mbps   56.97 Mbps   dev.tongji.edu.cn     success
 ```
 
-（示例输出，数值为演示。校内三流 812 与公网单流 203 **不可比大小**，
-方法与路径都不同——这正是分开呈现的意义。）
+（2026-10-04 在南大校内有线网络上的一次实测。三个目标走三条不同路径：
+校内、教育网骨干、跨省教育网，数字差异说的是路径，不是 pace 的误差。）
 
 ## 快速开始
 
 ```sh
-brew tap soundadam/tap
-brew install pace
+brew install --cask soundadam/tap/pace
 pace doctor --json
 pace
 ```
 
 首次在交互终端运行会选择语言与日常测速站（macOS 默认预选
 `nju-campus`、`mlab`、`apple`；Linux/Windows 预选 `nju-campus`、
-`mlab`），之后可用 `pace setup` 修改。Homebrew Formula 当前只
-覆盖 macOS；Linux/Windows 使用 release 二进制或源码构建，详见
+`mlab`），之后可用 `pace setup` 修改。Homebrew cask 在 macOS
+上安装；Linux/Windows 使用 release 二进制或源码构建，详见
 [安装文档](docs/getting-started/installation.mdx)。
 
 ## 测速视角
@@ -95,8 +93,7 @@ pace setup | doctor [--json] | version
 
 ## 文档
 
-文档站源文件在 [`docs/`](docs/)（Mintlify），线上地址计划为
-<https://docs.soundadam.com>（或 `pace.mintlify.app`，域名待绑定）：
+文档源文件在 [`docs/`](docs/)（Mintlify 格式），在 GitHub 上可以直接阅读：
 
 - 科普：[网络测速在测什么](docs/concepts/what-speed-tests-measure.mdx) ·
   [为什么不同工具测出的数字不一样](docs/concepts/why-results-differ.mdx) ·
