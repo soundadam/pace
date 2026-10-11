@@ -24,7 +24,7 @@ pace consent status|accept|revoke
 pace setup
 pace doctor [--json]
 pace version
-pace update [--check]
+pace update [--check | --auto on|off]
 ```
 
 全局 `--json` 可加在任意位置：输出恰好一个 JSON 文档，不含 ANSI 转义，
@@ -78,7 +78,7 @@ pace ookla --no-save --json
 | `setup` | 重新选择界面语言与日常测速站；需要交互终端 |
 | `doctor [--json]` | 环境诊断；见 [doctor 排障](/reference/doctor) |
 | `version` | 输出版本；`--json` 输出 `{"version": ...}`，`pace --version` 同样输出版本 |
-| `update [--check]` | 更新到最新 release；`--check` 只报告有没有新版。Homebrew 装的交给 `brew upgrade` |
+| `update [--check \| --auto on\|off]` | 更新到最新 release；`--check` 只报告有没有新版，`--auto on\|off` 打开或关掉自动检查。Homebrew 装的交给 `brew upgrade` |
 
 ## 交互选择器
 

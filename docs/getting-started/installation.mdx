@@ -43,8 +43,9 @@ GOOS=windows GOARCH=amd64 go build -o pace.exe ./cmd/pace
 ## 更新
 
 ```sh
-pace update           # 更新到最新版
-pace update --check   # 只看有没有新版
+pace update             # 更新到最新版
+pace update --check     # 只看有没有新版
+pace update --auto off  # 关掉自动检查（on 重新打开）
 ```
 
 Homebrew 装的交给 `brew upgrade`，直接下载的原地替换可执行文件，新版在下次运行时生效。

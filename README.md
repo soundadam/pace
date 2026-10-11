@@ -77,8 +77,9 @@ Windows，以及不用 Homebrew 的 macOS / Linux，从
 - Windows 版没有签名，SmartScreen 第一次运行时会警告。
 
 ```sh
-pace update           # 更新到最新版
-pace update --check   # 只看有没有新版
+pace update             # 更新到最新版
+pace update --check     # 只看有没有新版
+pace update --auto off  # 关掉自动检查（on 重新打开）
 pace --version
 ```
 
@@ -119,7 +120,7 @@ pace history [--limit N] | last [--json] | show RUN_ID [--json]
 pace export --format jsonl|csv --output PATH
 pace consent status|accept|revoke
 pace setup | doctor [--json] | version
-pace update [--check]
+pace update [--check | --auto on|off]
 ```
 
 退出码稳定：`0` 全部成功，`1` 配置/环境错误，`2` 目标失败或部分成功，

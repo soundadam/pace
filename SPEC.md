@@ -302,7 +302,7 @@ pace export --format jsonl|csv --output PATH
 pace consent status|accept|revoke
 pace doctor [--json]
 pace version
-pace update [--check]
+pace update [--check | --auto on|off]
 ```
 
 `pace --version`, `pace update` and the post-command notice of a newer release

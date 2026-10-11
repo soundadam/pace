@@ -33,21 +33,9 @@ type selectorModel struct {
 	errorText string
 	language  preferences.Language
 	theme     theme
-	// updater offers a newer release; updating holds the measurement back
-	// until the download is done, so it does not share the link with it.
-	updater  tuiv2.Updater
-	updating bool
-}
-
-// updaterMsg carries the updater's own messages, so the selector can tell when
-// an update it started has finished.
-type updaterMsg struct{ msg tea.Msg }
-
-func fromUpdater(cmd tea.Cmd) tea.Cmd {
-	if cmd == nil {
-		return nil
-	}
-	return func() tea.Msg { return updaterMsg{cmd()} }
+	// updater offers a newer release; while it updates, the measurement waits
+	// so the two do not share the link.
+	updater tuiv2.Updater
 }
 
 func SelectPlan(ctx context.Context, input io.Reader, output io.Writer, app appkit.App) (target.Plan, error) {
@@ -131,33 +119,24 @@ func newSelectorModelConfigured(app appkit.App, probeResults []target.ProbeResul
 }
 
 func (selector *selectorModel) Init() tea.Cmd {
-	return tea.Batch(tea.RequestBackgroundColor, fromUpdater(selector.updater.Init()))
+	return tea.Batch(tea.RequestBackgroundColor, selector.updater.Init())
 }
 
 func (selector *selectorModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
-	switch message := message.(type) {
-	case tea.BackgroundColorMsg:
-		selector.theme.applyBackground(message)
+	if background, ok := message.(tea.BackgroundColorMsg); ok {
+		selector.theme.applyBackground(background)
 		return selector, nil
-	case updaterMsg:
-		var next tea.Cmd
-		selector.updater, next = selector.updater.Update(message.msg)
-		if next == nil {
-			selector.updating = false
-		}
-		return selector, fromUpdater(next)
 	}
+	var updaterCmd tea.Cmd
+	selector.updater, updaterCmd = selector.updater.Update(message)
 	key, ok := message.(tea.KeyPressMsg)
 	if !ok {
-		return selector, nil
+		return selector, updaterCmd
 	}
 	selector.errorText = ""
-	offered := selector.updater.Available()
-	var started tea.Cmd
-	selector.updater, started = selector.updater.Update(key)
-	if offered && started != nil {
-		selector.updating = true
-		return selector, fromUpdater(started)
+	if updaterCmd != nil {
+		// The key started an update.
+		return selector, updaterCmd
 	}
 	switch key.String() {
 	case "up", "k":
@@ -184,28 +163,34 @@ func (selector *selectorModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case "d":
 		selector.setFamily(target.FamilyDual)
 	case "enter":
-		if selector.updating {
-			selector.errorText = selector.text("更新下载完再开始测速", "wait for the update to finish before measuring")
-			return selector, nil
-		}
-		ids := selector.selectedIDs()
-		if len(ids) == 0 {
-			selector.errorText = selector.text("请至少选择一个测速站", "select at least one measurement target")
-			return selector, nil
-		}
-		plan, err := target.NewPlan(ids, selector.family)
-		if err != nil {
-			selector.errorText = err.Error()
-			return selector, nil
-		}
-		selector.plan = plan
-		selector.done = true
-		return selector, tea.Quit
+		return selector.confirm(selector.updater.Updating())
 	case "esc", "q", "ctrl+c":
 		selector.cancelled = true
 		return selector, tea.Quit
 	}
 	return selector, nil
+}
+
+// confirm turns the selection into the plan and ends the selector. It holds
+// the measurement back while an update is in progress.
+func (selector *selectorModel) confirm(updating bool) (tea.Model, tea.Cmd) {
+	if updating {
+		selector.errorText = selector.text("更新下载完再开始测速", "wait for the update to finish before measuring")
+		return selector, nil
+	}
+	ids := selector.selectedIDs()
+	if len(ids) == 0 {
+		selector.errorText = selector.text("请至少选择一个测速站", "select at least one measurement target")
+		return selector, nil
+	}
+	plan, err := target.NewPlan(ids, selector.family)
+	if err != nil {
+		selector.errorText = err.Error()
+		return selector, nil
+	}
+	selector.plan = plan
+	selector.done = true
+	return selector, tea.Quit
 }
 
 func (selector *selectorModel) View() tea.View {

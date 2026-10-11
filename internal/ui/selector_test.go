@@ -102,14 +102,12 @@ func TestSelectorDeselectsIPv4OnlyStationForIPv6(t *testing.T) {
 func TestSelectorHoldsTheMeasurementWhileUpdating(t *testing.T) {
 	selector := newSelectorModel(testApp, nil)
 	selector.selected = map[string]bool{"mlab": true}
-	selector.updating = true
-	if _, command := selector.Update(key("enter")); command != nil || selector.done || selector.errorText == "" {
-		t.Fatalf("enter during an update: done=%v error=%q", selector.done, selector.errorText)
+	if _, command := selector.confirm(true); command != nil || selector.done || selector.errorText == "" {
+		t.Fatalf("confirm during an update: done=%v error=%q", selector.done, selector.errorText)
 	}
-	// The updater's last message has no follow-up: the update is over.
-	_, _ = selector.Update(updaterMsg{})
+	// testApp's updater never updates, so enter goes ahead.
 	if _, command := selector.Update(key("enter")); command == nil || !selector.done {
-		t.Fatalf("enter after the update: done=%v error=%q", selector.done, selector.errorText)
+		t.Fatalf("enter with no update running: done=%v error=%q", selector.done, selector.errorText)
 	}
 }
 
