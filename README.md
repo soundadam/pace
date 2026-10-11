@@ -44,6 +44,7 @@ Tongji · IPv4      librespeed-three-stream  76.54 Mbps   56.97 Mbps   dev.tongj
 ## 快速开始
 
 ```sh
+brew trust --tap soundadam/tap
 brew install --cask soundadam/tap/pace
 pace doctor --json
 pace
@@ -58,6 +59,7 @@ pace
 macOS 与 Linux 用 Homebrew：
 
 ```sh
+brew trust --tap soundadam/tap
 brew install --cask soundadam/tap/pace
 ```
 

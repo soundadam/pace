@@ -5,7 +5,9 @@ weight: 30
 presentation:
   category: Network measurement / CLI
   label: Install with Homebrew
-  command: brew install --cask soundadam/tap/pace
+  command:
+    - brew trust --tap soundadam/tap
+    - brew install --cask soundadam/tap/pace
   note: No score. No telemetry. A failure is recorded as a failure.
 registry:
   github: soundadam/pace

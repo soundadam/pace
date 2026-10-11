@@ -5,7 +5,9 @@ weight: 30
 presentation:
   category: 网络测速 / CLI
   label: 用 Homebrew 安装
-  command: brew install --cask soundadam/tap/pace
+  command:
+    - brew trust --tap soundadam/tap
+    - brew install --cask soundadam/tap/pace
   note: 不打分。没有遥测。失败就记失败。
 registry:
   github: soundadam/pace
