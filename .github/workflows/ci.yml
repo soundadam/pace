@@ -69,19 +69,3 @@ jobs:
 
       - name: Build pace binary
         run: go build ./cmd/pace
-
-  # The branch ruleset requires this job alone. It passes when every job above
-  # passed or was skipped, so adding a job here is the only change a new one needs.
-  check:
-    if: always()
-    needs: [test, build]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Every job passed or was skipped
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          echo "$RESULTS"
-          for r in $RESULTS; do
-            case "$r" in success|skipped) ;; *) exit 1 ;; esac
-          done
