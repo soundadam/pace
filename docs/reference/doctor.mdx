@@ -32,11 +32,11 @@ JSON 模式的字段：
 
 <AccordionGroup>
   <Accordion title="campus / mlab 报 helper 缺失">
-    基础测量依赖 pace 发布的 `librespeed-cli` 和 `ndt7-client`
-    helper。Homebrew 安装会放在 `../libexec/pace/`；自行构建时
-    需要把 helper 放进仓库 `.tools/bin` 或按文档配置 PATH。pace
-    **不会**自动下载缺失的 helper。见[安装](/getting-started/installation)
-    的 helper 机制一节。
+    基础测量依赖固定版本的 `librespeed-cli` 和 `ndt7-client`
+    helper。Homebrew 和直接下载的压缩包都不含它们，pace 也**不会**
+    自动下载；在 pace 仓库里运行 `make tools` 构建到 `.tools/bin`，
+    在仓库外使用时把它们（连同 `ndt7-client.version`）放进 PATH。
+    见[安装](/getting-started/installation)的 helper 机制一节。
   </Accordion>
   <Accordion title="consentAccepted 为 false，非交互运行失败">
     这是 fail-closed 的预期行为。在交互终端执行

@@ -6,14 +6,18 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	appkit "github.com/soundadam/appkit/go"
 
 	"github.com/soundadam/pace/internal/model"
 	"github.com/soundadam/pace/internal/preferences"
 	"github.com/soundadam/pace/internal/target"
 )
 
+// testApp is a development build: it never checks for or offers updates.
+var testApp = appkit.App{Name: "pace", Version: "test", Repo: "soundadam/pace"}
+
 func TestSelectorRecommendsCampusWhenReachable(t *testing.T) {
-	selector := newSelectorModel("test", []target.ProbeResult{
+	selector := newSelectorModel(testApp, []target.ProbeResult{
 		{StationID: "nju-campus", Family: "ipv4", Status: target.ProbeReachable},
 	})
 	appleExpected := runtime.GOOS == "darwin"
@@ -37,7 +41,7 @@ func TestSelectorRecommendsCampusWhenReachable(t *testing.T) {
 }
 
 func TestSelectorDoesNotRecommendUnreachableCampus(t *testing.T) {
-	selector := newSelectorModel("test", []target.ProbeResult{
+	selector := newSelectorModel(testApp, []target.ProbeResult{
 		{StationID: "nju-campus", Family: "ipv4", Status: target.ProbeUnreachable},
 	})
 	appleExpected := runtime.GOOS == "darwin"
@@ -47,7 +51,7 @@ func TestSelectorDoesNotRecommendUnreachableCampus(t *testing.T) {
 }
 
 func TestConfiguredSelectorShowsOnlyDailyStationsInPriorityOrder(t *testing.T) {
-	selector := newSelectorModelConfigured("test", []target.ProbeResult{
+	selector := newSelectorModelConfigured(testApp, []target.ProbeResult{
 		{StationID: "tongji", Family: "ipv4", Status: target.ProbeReachable},
 	}, preferences.Config{SchemaVersion: preferences.SchemaVersion, Language: preferences.LanguageChinese, DailyStations: []string{"tongji", "ookla"}})
 	if len(selector.stations) != 2 || selector.stations[0].ID != "ookla" || selector.stations[1].ID != "tongji" {
@@ -60,7 +64,7 @@ func TestConfiguredSelectorShowsOnlyDailyStationsInPriorityOrder(t *testing.T) {
 }
 
 func TestSelectorBuildsDualStackPlan(t *testing.T) {
-	selector := newSelectorModel("test", nil)
+	selector := newSelectorModel(testApp, nil)
 	selector.selected = map[string]bool{"nju-campus": true, "mlab": true}
 	_, _ = selector.Update(key("d"))
 	modelValue, command := selector.Update(key("enter"))
@@ -83,7 +87,7 @@ func TestSelectorBuildsDualStackPlan(t *testing.T) {
 }
 
 func TestSelectorDeselectsIPv4OnlyStationForIPv6(t *testing.T) {
-	selector := newSelectorModel("test", nil)
+	selector := newSelectorModel(testApp, nil)
 	selector.selected["tongji"] = true
 	_, _ = selector.Update(key("6"))
 	if selector.selected["tongji"] {
@@ -92,6 +96,18 @@ func TestSelectorDeselectsIPv4OnlyStationForIPv6(t *testing.T) {
 	view := selector.View().Content
 	if !strings.Contains(view, "–") {
 		t.Fatalf("disabled station missing Teaway-style dash:\n%s", view)
+	}
+}
+
+func TestSelectorHoldsTheMeasurementWhileUpdating(t *testing.T) {
+	selector := newSelectorModel(testApp, nil)
+	selector.selected = map[string]bool{"mlab": true}
+	if _, command := selector.confirm(true); command != nil || selector.done || selector.errorText == "" {
+		t.Fatalf("confirm during an update: done=%v error=%q", selector.done, selector.errorText)
+	}
+	// testApp's updater never updates, so enter goes ahead.
+	if _, command := selector.Update(key("enter")); command == nil || !selector.done {
+		t.Fatalf("enter with no update running: done=%v error=%q", selector.done, selector.errorText)
 	}
 }
 

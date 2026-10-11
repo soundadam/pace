@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/fang"
+	appcli "github.com/soundadam/appkit/go/cli"
 	"github.com/spf13/cobra"
 
 	"github.com/soundadam/pace/internal/model"
@@ -43,7 +44,7 @@ func (app *App) Execute(ctx context.Context, args []string) int {
 	root.SetOut(app.Out)
 	root.SetErr(app.Err)
 	if err := fang.Execute(ctx, root,
-		fang.WithVersion(app.Version),
+		fang.WithoutVersion(),
 		fang.WithErrorHandler(state.handleError),
 	); err != nil {
 		return 1
@@ -153,6 +154,14 @@ systems, offers to run the official setup commands after confirmation.`,
 		app.newDoctorCommand(state),
 		app.newVersionCommand(state),
 	)
+	// --version and update follow the soundadam app conventions; pace keeps its
+	// own version command for --json.
+	appcli.AddCommands(root, app.Identity)
+	for _, command := range root.Commands() {
+		if command.Name() == "update" {
+			command.GroupID = groupConfig
+		}
+	}
 	root.SetHelpCommandGroupID(groupConfig)
 	root.SetCompletionCommandGroupID(groupConfig)
 	return root
@@ -356,7 +365,7 @@ func (app *App) newVersionCommand(state *execution) *cobra.Command {
 		GroupID: groupConfig,
 		Args:    rejectArgs("version does not accept arguments"),
 		RunE: func(*cobra.Command, []string) error {
-			state.code = app.writeValue(state.json, map[string]string{"version": app.Version}, "pace "+app.Version)
+			state.code = app.writeValue(state.json, map[string]string{"version": app.Identity.Version}, "pace "+app.Identity.Version)
 			return nil
 		},
 	}

@@ -16,13 +16,7 @@ test-campus-fixture:
 test-run-fixture:
 	./scripts/test-run-fixture.sh
 
-test-homebrew-template:
-	./scripts/test-homebrew-template.sh
-
-test-release-artifact:
-	./scripts/test-release-artifact.sh
-
-test-offline: check test-campus-fixture test-run-fixture test-homebrew-template test-release-artifact
+test-offline: check test-campus-fixture test-run-fixture
 
 vet:
 	GOTOOLCHAIN=$(GOTOOLCHAIN) $(GO) vet ./...

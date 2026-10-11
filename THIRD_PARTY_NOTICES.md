@@ -15,14 +15,13 @@ version and SHA-256. Go library dependencies are locked by `go.mod` and
 - Source archive SHA-256:
   `5ad938b61e3edc0ca95e2ccff0c06e97a69383f3cbb0243bd47b21b9865f9f55`
 - License: GNU Lesser General Public License v3.0
-- Installed executable: `libexec/pace/librespeed-cli`
+- Executable: `librespeed-cli`, built by `make tools`
 
 The complete maintained source is in `components/librespeed-cli`. It adds
 structured progress and explicit loopback SOCKS5 support while preserving the
 upstream module and LGPL license. The helper remains a separate executable and
-is not statically linked into the MIT executable. The source release contains
-the complete corresponding source, and the Homebrew Formula installs its
-license.
+is not statically linked into the MIT executable. The repository contains the
+complete corresponding source and its license.
 
 ## M-Lab ndt7-client-go
 
@@ -32,12 +31,12 @@ license.
 - Source archive SHA-256:
   `31b40268bd7a9d31bdb5507b7ade2fad2efb8abb9e7339d2f59e9cdee5340bef`
 - License: Apache License 2.0
-- Installed executable: `libexec/pace/ndt7-client`
+- Executable: `ndt7-client`, built by `make tools`
 
 pace consumes the helper's JSON event stream and identifies the client as
-`pace`. Because the upstream CLI has no version-reporting command, packaging
-installs `ndt7-client.version` containing `v0.10.1`; runtime preflight verifies
-that sidecar before a test. The Homebrew Formula installs the upstream license.
+`pace`. Because the upstream CLI has no version-reporting command, `make tools`
+writes `ndt7-client.version` containing `v0.10.1` next to it; runtime preflight
+verifies that sidecar before a test.
 
 ## Apple networkQuality
 
@@ -49,7 +48,7 @@ explanation.
 ## Ookla Speedtest CLI
 
 The official Ookla `speedtest` CLI is an optional user-installed executable. It
-is not bundled, downloaded, or a Homebrew Formula dependency of pace.
+is not bundled with or downloaded by pace.
 pace validates the executable identity and refuses the unrelated Python
 `speedtest-cli`. Ookla licensing and any first-run license/GDPR acceptance remain
 between the user and Ookla; pace never passes acceptance flags
@@ -67,7 +66,8 @@ them only after Enter and never runs uninstall commands. See
 - Integration: linked Go library for fixed-block inline terminal rendering
 
 Bubble Tea and its transitive Go dependencies are recorded in `go.mod` and
-`go.sum`. The renderer is disabled for redirected output and global JSON mode.
+`go.sum`. Each release archive carries `THIRD_PARTY_LICENSES` with the license
+texts of the Go runtime and every module linked into that platform's binary. The renderer is disabled for redirected output and global JSON mode.
 
 ## Release verification
 
@@ -76,5 +76,4 @@ Before each release:
 1. run `go mod verify`;
 2. rebuild both helper archives from their recorded SHA-256 sources;
 3. run the complete offline fixture and race gates;
-4. verify the Formula installs the upstream helper license files;
-5. review dependency changes in `go.mod`, `go.sum`, and this notice.
+4. review dependency changes in `go.mod`, `go.sum`, and this notice.

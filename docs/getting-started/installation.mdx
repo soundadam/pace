@@ -4,30 +4,54 @@ description: "macOS、Linux、Windows 安装方式，helper 机制与可选的 O
 icon: "download"
 ---
 
-## macOS（Homebrew）
+## Homebrew（macOS、Linux）
 
 ```sh
 brew install --cask soundadam/tap/pace
 pace doctor --json
 ```
 
-Homebrew cask 在 macOS 上安装。
+## 直接下载
 
-## Linux / Windows
+[Releases](https://github.com/soundadam/pace/releases) 里每个平台一份压缩包：
+macOS、Linux 是 `pace-<版本>-<macos|linux>-<x86_64|aarch64>.tar.gz`，Windows 是
+`pace-<版本>-windows-<x86_64|aarch64>.zip`。解压出的目录里是 `pace`
+（Windows 是 `pace.exe`），把它放进 PATH。
 
-使用对应平台的 [release 二进制](https://github.com/soundadam/pace/releases)，
-或从仓库源码构建核心 CLI。构建不需要 Apple SDK：
+- macOS 版没有经过 Apple 公证：浏览器下载的第一次运行会被 Gatekeeper 拦下，
+  到「系统设置 → 隐私与安全性」里点「仍要打开」，或者
+  `xattr -dr com.apple.quarantine <解压出来的 pace>`。Homebrew 装的不受影响。
+- Windows 版没有签名，SmartScreen 第一次运行时会警告。
+
+<Warning>
+基础测量（NJU Campus、M-Lab）需要固定版本的 LibreSpeed/ndt7 helper。
+Homebrew 和直接下载的压缩包里都没有 helper，pace 也不会下载它们；
+缺少时 `pace doctor` 会明确报告。获取方法见下面的「helper 机制」一节。
+</Warning>
+
+## 从源码构建
+
+构建不需要 Apple SDK：
 
 ```sh
 GOOS=linux   GOARCH=amd64 go build -o pace ./cmd/pace
 GOOS=windows GOARCH=amd64 go build -o pace.exe ./cmd/pace
 ```
 
-<Warning>
-基础测量（NJU Campus、M-Lab）需要 pace 发布的 LibreSpeed/ndt7
-helper。缺少 helper 时 `doctor` 会明确报告缺失，而不是下载未知程序。
-自行构建时请同时准备 helper（见下节）。
-</Warning>
+源码构建没有注入版本号，是开发构建：`pace version` 显示 `dev`，不检查也不安装更新。
+
+## 更新
+
+```sh
+pace update             # 更新到最新版
+pace update --check     # 只看有没有新版
+pace update --auto off  # 关掉自动检查（on 重新打开）
+```
+
+Homebrew 装的交给 `brew upgrade`，直接下载的原地替换可执行文件，新版在下次运行时生效。
+自动检查与提示见 [README](https://github.com/soundadam/pace#安装与更新)，
+怎么判断安装方式、会发哪些网络请求见
+[appkit 的约定](https://github.com/soundadam/appkit#更新)。
 
 ## helper 机制
 
@@ -36,16 +60,30 @@ pace 本体是 MIT 许可的单一二进制；实际测量由独立的 helper �
 
 | helper | 版本 | 许可 | 来源 |
 | --- | --- | --- | --- |
-| `librespeed-cli` | v1.0.13-campus.1（基于上游 v1.0.13） | LGPL-3.0-only | 随 pace 发布，源码在仓库 `components/librespeed-cli` |
-| `ndt7-client` | v0.10.1 | Apache-2.0 | 随 pace 发布，按固定版本与 SHA-256 构建 |
+| `librespeed-cli` | v1.0.13-campus.1（基于上游 v1.0.13） | LGPL-3.0-only | `make tools` 构建，源码在仓库 `components/librespeed-cli` |
+| `ndt7-client` | v0.10.1 | Apache-2.0 | `make tools` 按固定版本与 SHA-256 构建 |
 | `networkQuality` | 随 macOS | Apple 系统组件 | macOS 自带 `/usr/bin/networkQuality`，不捆绑、不下载 |
 | `speedtest`（Ookla） | 用户安装 | Ookla 条款 | 仅接受官方 CLI，可选 |
 
+`librespeed-cli` 与 `ndt7-client` 不在 Homebrew 和直接下载的压缩包里，
+要从源码构建（需要 Go、curl 与 tar）：
+
+```sh
+git clone https://github.com/soundadam/pace
+cd pace
+make tools    # 构建到 .tools/bin
+```
+
+在这个仓库里运行 pace 时直接用 `.tools/bin`；其他地方运行时，把
+`.tools/bin` 里的 `librespeed-cli`、`ndt7-client` 和 `ndt7-client.version`
+一起放进 PATH 上的某个目录（`ndt7-client.version` 必须和 `ndt7-client`
+在同一目录），再用 `pace doctor` 确认。
+
 helper 的解析顺序：
 
-1. 相对可执行文件的 `../libexec/pace/`（正式安装位置）；
-2. 仓库本地 `.tools/bin`（开发环境）；
-3. 文档化的 PATH 回退。
+1. 相对可执行文件的 `../libexec/pace/`；
+2. 仓库本地 `.tools/bin`（在 pace 仓库目录内运行时）；
+3. PATH。
 
 pace 会校验 helper 的确切版本并写入结果；存在固定版本的 libexec
 helper 时不会静默改用 PATH 上更新的版本。

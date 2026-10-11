@@ -190,7 +190,11 @@ d            dual stack
 a            restore recommendation
 Enter        execute
 q / Esc      cancel
+u            update, when a newer release is offered
 ```
+
+While an update started with `u` is downloading, Enter does not start the
+measurement, so the download never shares the link with it.
 
 The selector chrome follows Teaway's Charm TUI: indigo title `pace`,
 fuchsia cursor (`>`), green check (`✓`) for selected stations, faint bullet
@@ -298,7 +302,11 @@ pace export --format jsonl|csv --output PATH
 pace consent status|accept|revoke
 pace doctor [--json]
 pace version
+pace update [--check | --auto on|off]
 ```
+
+`pace --version`, `pace update` and the post-command notice of a newer release
+follow the [appkit](https://github.com/soundadam/appkit#命令行) conventions.
 
 ## 9. Consent and privacy
 
@@ -312,7 +320,9 @@ without current consent fails before contacting M-Lab. LibreSpeed telemetry and
 sharing are always disabled.
 
 pace has no own analytics, remote result service, geolocation enrichment, or
-ASN lookup.
+ASN lookup. Its only request outside measurement is the release check
+described by [appkit](https://github.com/soundadam/appkit#更新), which carries
+no measurement data.
 
 ## 10. Storage and export
 
@@ -338,7 +348,7 @@ multi-station and dual-stack plans.
 
 Resolve helpers in this order:
 
-1. installed `../libexec/pace` relative to the executable;
+1. `../libexec/pace` relative to the executable;
 2. repository-local `.tools/bin`;
 3. documented developer PATH fallback.
 
@@ -353,9 +363,9 @@ Verify exact helper versions and include them in results. Production must not
 silently select an arbitrary newer PATH helper when a pinned libexec helper
 exists.
 
-Homebrew Formula tests are offline and may invoke only version, diagnostics, and
-read-only history commands. They must not probe real stations or run bandwidth
-measurements.
+The release archives and the Cask do not contain `librespeed-cli` or
+`ndt7-client`, and pace never downloads them; `make tools` builds both from this
+repository into `.tools/bin`.
 
 ## 12. Verification gates
 
@@ -374,8 +384,7 @@ Automated tests use mock helpers and local HTTP fixtures. They cover:
 - normalized CSV and JSONL export;
 - inline terminal rendering, cursor restoration, and no ANSI in redirected/JSON
   output;
-- atomic storage and `0700`/`0600` modes;
-- deterministic release artifacts and Homebrew template rendering.
+- atomic storage and `0700`/`0600` modes.
 
 Routine CI must never run a real bandwidth measurement or station probe.
 Operator acceptance validates real NJU Campus, domestic stations, M-Lab

@@ -24,6 +24,7 @@ pace consent status|accept|revoke
 pace setup
 pace doctor [--json]
 pace version
+pace update [--check | --auto on|off]
 ```
 
 全局 `--json` 可加在任意位置：输出恰好一个 JSON 文档，不含 ANSI 转义，
@@ -76,7 +77,8 @@ pace ookla --no-save --json
 | `consent status\|accept\|revoke` | M-Lab 隐私同意管理；`accept` 仅交互可用 |
 | `setup` | 重新选择界面语言与日常测速站；需要交互终端 |
 | `doctor [--json]` | 环境诊断；见 [doctor 排障](/reference/doctor) |
-| `version` | 输出版本 |
+| `version` | 输出版本；`--json` 输出 `{"version": ...}`，`pace --version` 同样输出版本 |
+| `update [--check \| --auto on\|off]` | 更新到最新 release；`--check` 只报告有没有新版，`--auto on\|off` 打开或关掉自动检查。Homebrew 装的交给 `brew upgrade` |
 
 ## 交互选择器
 
@@ -90,6 +92,7 @@ space        选择/取消
 a            恢复 NJU + M-Lab + Apple 推荐
 enter        按顺序开始
 esc          取消
+u            有新版时更新（下载完才能开始测速）
 ```
 
 推荐只设置默认值，不授权测量过程中的静默替换。Ookla 永远不会被自动

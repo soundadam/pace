@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	appkit "github.com/soundadam/appkit/go"
+
 	"github.com/soundadam/pace/internal/consent"
 	"github.com/soundadam/pace/internal/model"
 	"github.com/soundadam/pace/internal/preferences"
@@ -90,7 +92,7 @@ func TestVersionJSON(t *testing.T) {
 func TestBareCommandRunsBothProvidersAfterConsent(t *testing.T) {
 	runner := &fakeRunner{summary: successfulSummary(model.CommandRun)}
 	app, stdout, stderr := newTestApp(t, runner)
-	if _, err := app.Consent.Accept(app.Version, app.Now()); err != nil {
+	if _, err := app.Consent.Accept(app.Identity.Version, app.Now()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -110,7 +112,7 @@ func TestRunDefaultsToCampusMLabAndApple(t *testing.T) {
 	providers := []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderMLab, model.ProviderApple}
 	runner := &fakeRunner{summary: summaryForProviders(model.CommandRun, providers)}
 	app, _, stderr := newTestApp(t, runner)
-	if _, err := app.Consent.Accept(app.Version, app.Now()); err != nil {
+	if _, err := app.Consent.Accept(app.Identity.Version, app.Now()); err != nil {
 		t.Fatal(err)
 	}
 	if exitCode := app.Execute(context.Background(), []string{"run", "--no-save"}); exitCode != 0 {
@@ -125,7 +127,7 @@ func TestCombinedRunContinuesWhenOptionalTargetIsRemoved(t *testing.T) {
 	providers := []model.Provider{model.ProviderNJUCampusIPv4, model.ProviderMLab}
 	runner := &preparingFakeRunner{fakeRunner: fakeRunner{summary: summaryForProviders(model.CommandRun, providers)}}
 	app, _, stderr := newTestApp(t, runner)
-	if _, err := app.Consent.Accept(app.Version, app.Now()); err != nil {
+	if _, err := app.Consent.Accept(app.Identity.Version, app.Now()); err != nil {
 		t.Fatal(err)
 	}
 	if exitCode := app.Execute(context.Background(), []string{"run", "--targets", "nju-campus,mlab,ookla", "--no-save"}); exitCode != 0 {
@@ -319,7 +321,7 @@ func TestPartialRunReturnsTwoAndJSONHasNoANSI(t *testing.T) {
 	}
 	runner := &fakeRunner{summary: summary}
 	app, stdout, stderr := newTestApp(t, runner)
-	if _, err := app.Consent.Accept(app.Version, app.Now()); err != nil {
+	if _, err := app.Consent.Accept(app.Identity.Version, app.Now()); err != nil {
 		t.Fatal(err)
 	}
 	exitCode := app.Execute(context.Background(), []string{"run", "--json", "--no-save"})
@@ -429,10 +431,10 @@ func TestBareTTYUsesSelectorPlan(t *testing.T) {
 	runner := &fakeRunner{summary: summaryForProviders(model.CommandRun, providers)}
 	app, _, stderr := newTestApp(t, runner)
 	app.StdoutTTY = true
-	if _, err := app.Consent.Accept(app.Version, app.Now()); err != nil {
+	if _, err := app.Consent.Accept(app.Identity.Version, app.Now()); err != nil {
 		t.Fatal(err)
 	}
-	app.SelectorFactory = func(context.Context, io.Reader, io.Writer, string) (target.Plan, error) {
+	app.SelectorFactory = func(context.Context, io.Reader, io.Writer, appkit.App) (target.Plan, error) {
 		return target.Plan{StationIDs: []string{"nju-campus", "mlab"}, Family: target.FamilyIPv4, Providers: providers}, nil
 	}
 	app.ProgressFactory = func(io.Writer, string, []model.Provider) (progressRenderer, error) {
@@ -457,7 +459,7 @@ func TestBareTTYRunsOnboardingOnceAndUsesDailyStations(t *testing.T) {
 		setupCalls++
 		return preferences.Config{SchemaVersion: preferences.SchemaVersion, Language: preferences.LanguageChinese, DailyStations: []string{"tongji"}}, nil
 	}
-	app.ConfiguredSelectorFactory = func(_ context.Context, _ io.Reader, _ io.Writer, _ string, config preferences.Config) (target.Plan, error) {
+	app.ConfiguredSelectorFactory = func(_ context.Context, _ io.Reader, _ io.Writer, _ appkit.App, config preferences.Config) (target.Plan, error) {
 		if config.Language != preferences.LanguageChinese || fmt.Sprint(config.DailyStations) != "[tongji]" {
 			t.Fatalf("config = %#v", config)
 		}
@@ -543,7 +545,7 @@ func newTestApp(t *testing.T, runner provider.Runner) (*App, *bytes.Buffer, *byt
 		Err:       stderr,
 		StdinTTY:  true,
 		StdoutTTY: false,
-		Version:   "test",
+		Identity:  appkit.App{Name: "pace", Version: "test"},
 		Runner:    runner,
 		History:   storage.New(filepath.Join(root, "history")),
 		Consent:   consent.New(filepath.Join(root, "consent.json")),

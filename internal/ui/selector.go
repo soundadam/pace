@@ -10,6 +10,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	appkit "github.com/soundadam/appkit/go"
+	"github.com/soundadam/appkit/go/tuiv2"
 
 	"github.com/soundadam/pace/internal/model"
 	"github.com/soundadam/pace/internal/preferences"
@@ -31,17 +33,20 @@ type selectorModel struct {
 	errorText string
 	language  preferences.Language
 	theme     theme
+	// updater offers a newer release; while it updates, the measurement waits
+	// so the two do not share the link.
+	updater tuiv2.Updater
 }
 
-func SelectPlan(ctx context.Context, input io.Reader, output io.Writer, version string) (target.Plan, error) {
-	return selectPlan(ctx, input, output, version, preferences.Config{})
+func SelectPlan(ctx context.Context, input io.Reader, output io.Writer, app appkit.App) (target.Plan, error) {
+	return selectPlan(ctx, input, output, app, preferences.Config{})
 }
 
-func SelectPlanConfigured(ctx context.Context, input io.Reader, output io.Writer, version string, config preferences.Config) (target.Plan, error) {
-	return selectPlan(ctx, input, output, version, config)
+func SelectPlanConfigured(ctx context.Context, input io.Reader, output io.Writer, app appkit.App, config preferences.Config) (target.Plan, error) {
+	return selectPlan(ctx, input, output, app, config)
 }
 
-func selectPlan(ctx context.Context, input io.Reader, output io.Writer, version string, config preferences.Config) (target.Plan, error) {
+func selectPlan(ctx context.Context, input io.Reader, output io.Writer, app appkit.App, config preferences.Config) (target.Plan, error) {
 	probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	var probes []target.ProbeResult
 	if config.Validate() == nil {
@@ -50,7 +55,7 @@ func selectPlan(ctx context.Context, input io.Reader, output io.Writer, version 
 		probes = target.ProbeAll(probeCtx, 1500*time.Millisecond)
 	}
 	cancel()
-	model := newSelectorModelConfigured(version, probes, config)
+	model := newSelectorModelConfigured(app, probes, config)
 	program := tea.NewProgram(
 		model,
 		tea.WithContext(ctx),
@@ -74,11 +79,11 @@ func selectPlan(ctx context.Context, input io.Reader, output io.Writer, version 
 	return selector.plan, nil
 }
 
-func newSelectorModel(version string, probeResults []target.ProbeResult) *selectorModel {
-	return newSelectorModelConfigured(version, probeResults, preferences.Config{})
+func newSelectorModel(app appkit.App, probeResults []target.ProbeResult) *selectorModel {
+	return newSelectorModelConfigured(app, probeResults, preferences.Config{})
 }
 
-func newSelectorModelConfigured(version string, probeResults []target.ProbeResult, config preferences.Config) *selectorModel {
+func newSelectorModelConfigured(app appkit.App, probeResults []target.ProbeResult, config preferences.Config) *selectorModel {
 	probes := make(map[string]target.ProbeResult, len(probeResults))
 	for _, result := range probeResults {
 		probes[probeKey(result.StationID, result.Family)] = result
@@ -100,33 +105,39 @@ func newSelectorModelConfigured(version string, probeResults []target.ProbeResul
 		stations = filtered
 	}
 	model := &selectorModel{
-		version:  version,
+		version:  app.Version,
 		stations: stations,
 		probes:   probes,
 		family:   target.FamilyIPv4,
 		selected: map[string]bool{},
 		language: language,
 		theme:    newTheme(),
+		updater:  tuiv2.New(app),
 	}
 	model.applyRecommendation()
 	return model
 }
 
 func (selector *selectorModel) Init() tea.Cmd {
-	return tea.RequestBackgroundColor
+	return tea.Batch(tea.RequestBackgroundColor, selector.updater.Init())
 }
 
 func (selector *selectorModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
-	switch message := message.(type) {
-	case tea.BackgroundColorMsg:
-		selector.theme.applyBackground(message)
+	if background, ok := message.(tea.BackgroundColorMsg); ok {
+		selector.theme.applyBackground(background)
 		return selector, nil
 	}
+	var updaterCmd tea.Cmd
+	selector.updater, updaterCmd = selector.updater.Update(message)
 	key, ok := message.(tea.KeyPressMsg)
 	if !ok {
-		return selector, nil
+		return selector, updaterCmd
 	}
 	selector.errorText = ""
+	if updaterCmd != nil {
+		// The key started an update.
+		return selector, updaterCmd
+	}
 	switch key.String() {
 	case "up", "k":
 		if selector.cursor > 0 {
@@ -152,24 +163,34 @@ func (selector *selectorModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case "d":
 		selector.setFamily(target.FamilyDual)
 	case "enter":
-		ids := selector.selectedIDs()
-		if len(ids) == 0 {
-			selector.errorText = selector.text("请至少选择一个测速站", "select at least one measurement target")
-			return selector, nil
-		}
-		plan, err := target.NewPlan(ids, selector.family)
-		if err != nil {
-			selector.errorText = err.Error()
-			return selector, nil
-		}
-		selector.plan = plan
-		selector.done = true
-		return selector, tea.Quit
+		return selector.confirm(selector.updater.Updating())
 	case "esc", "q", "ctrl+c":
 		selector.cancelled = true
 		return selector, tea.Quit
 	}
 	return selector, nil
+}
+
+// confirm turns the selection into the plan and ends the selector. It holds
+// the measurement back while an update is in progress.
+func (selector *selectorModel) confirm(updating bool) (tea.Model, tea.Cmd) {
+	if updating {
+		selector.errorText = selector.text("更新下载完再开始测速", "wait for the update to finish before measuring")
+		return selector, nil
+	}
+	ids := selector.selectedIDs()
+	if len(ids) == 0 {
+		selector.errorText = selector.text("请至少选择一个测速站", "select at least one measurement target")
+		return selector, nil
+	}
+	plan, err := target.NewPlan(ids, selector.family)
+	if err != nil {
+		selector.errorText = err.Error()
+		return selector, nil
+	}
+	selector.plan = plan
+	selector.done = true
+	return selector, tea.Quit
 }
 
 func (selector *selectorModel) View() tea.View {
@@ -197,6 +218,9 @@ func (selector *selectorModel) View() tea.View {
 	detail := selector.cursorDetail()
 	help := selector.theme.help("space", "enter", "a", "4 6 d") + "\n" + selector.theme.help("esc")
 	blocks := []string{header, body, detail, help}
+	if line := selector.updater.View(); line != "" {
+		blocks = append(blocks, selector.theme.Faint().Render(line))
+	}
 	if selector.errorText != "" {
 		blocks = append(blocks, selector.theme.Bad().Render(selector.errorText))
 	}

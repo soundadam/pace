@@ -2,9 +2,11 @@
 set -eu
 
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-GO_VERSION="1.25.8"
+# The gate builds with the toolchain go.mod names, the one releases use.
+# GO_ARCHIVE_SHA256 is that toolchain's linux-amd64 archive (go.dev/dl).
+GO_VERSION=$(sed -n 's/^toolchain go//p' "$ROOT/go.mod")
 GO_ARCHIVE="go${GO_VERSION}.linux-amd64.tar.gz"
-GO_ARCHIVE_SHA256="ceb5e041bbc3893846bd1614d76cb4681c91dadee579426cf21a63f2d7e03be6"
+GO_ARCHIVE_SHA256="ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5"
 GO_ARCHIVE_URL="https://go.dev/dl/${GO_ARCHIVE}"
 
 checksum() {

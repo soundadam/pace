@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	appkit "github.com/soundadam/appkit/go"
+
 	"github.com/soundadam/pace/internal/consent"
 	"github.com/soundadam/pace/internal/exporter"
 	"github.com/soundadam/pace/internal/model"
@@ -28,19 +30,20 @@ type progressRenderer interface {
 }
 
 type App struct {
-	In                        io.Reader
-	Out                       io.Writer
-	Err                       io.Writer
-	StdinTTY                  bool
-	StdoutTTY                 bool
-	Version                   string
+	In        io.Reader
+	Out       io.Writer
+	Err       io.Writer
+	StdinTTY  bool
+	StdoutTTY bool
+	// Identity is the release identity: version, and where updates come from.
+	Identity                  appkit.App
 	Runner                    provider.Runner
 	History                   *storage.Store
 	Consent                   *consent.Store
 	Now                       func() time.Time
 	ProgressFactory           func(io.Writer, string, []model.Provider) (progressRenderer, error)
-	SelectorFactory           func(context.Context, io.Reader, io.Writer, string) (target.Plan, error)
-	ConfiguredSelectorFactory func(context.Context, io.Reader, io.Writer, string, preferences.Config) (target.Plan, error)
+	SelectorFactory           func(context.Context, io.Reader, io.Writer, appkit.App) (target.Plan, error)
+	ConfiguredSelectorFactory func(context.Context, io.Reader, io.Writer, appkit.App, preferences.Config) (target.Plan, error)
 	SetupFactory              func(context.Context, io.Reader, io.Writer, string, preferences.Config) (preferences.Config, error)
 	Preferences               *preferences.Store
 	LookupCommand             func(string) (string, error)
@@ -85,8 +88,11 @@ func (app *App) setDefaults() {
 	if app.Err == nil {
 		app.Err = io.Discard
 	}
-	if app.Version == "" {
-		app.Version = "dev"
+	if app.Identity.Name == "" {
+		app.Identity.Name = "pace"
+	}
+	if app.Identity.Version == "" {
+		app.Identity.Version = "dev"
 	}
 	if app.Now == nil {
 		app.Now = time.Now
@@ -126,9 +132,9 @@ func (app *App) executeBare(ctx context.Context, jsonMode bool) int {
 		}
 		var plan target.Plan
 		if app.Preferences != nil {
-			plan, err = app.ConfiguredSelectorFactory(ctx, app.In, app.Out, app.Version, config)
+			plan, err = app.ConfiguredSelectorFactory(ctx, app.In, app.Out, app.Identity, config)
 		} else {
-			plan, err = app.SelectorFactory(ctx, app.In, app.Out, app.Version)
+			plan, err = app.SelectorFactory(ctx, app.In, app.Out, app.Identity)
 		}
 		if err != nil {
 			if errors.Is(err, ui.ErrSelectionCancelled) {
@@ -152,7 +158,7 @@ func (app *App) loadOrConfigurePreferences(ctx context.Context) (preferences.Con
 	if exists {
 		return config, nil
 	}
-	config, err = app.SetupFactory(ctx, app.In, app.Out, app.Version, preferences.DefaultConfig())
+	config, err = app.SetupFactory(ctx, app.In, app.Out, app.Identity.Version, preferences.DefaultConfig())
 	if err != nil {
 		return preferences.Config{}, err
 	}
@@ -176,7 +182,7 @@ func (app *App) executeSetup(ctx context.Context, jsonMode bool) int {
 	if !exists {
 		current = preferences.DefaultConfig()
 	}
-	config, err := app.SetupFactory(ctx, app.In, app.Out, app.Version, current)
+	config, err := app.SetupFactory(ctx, app.In, app.Out, app.Identity.Version, current)
 	if err != nil {
 		if errors.Is(err, ui.ErrSetupCancelled) {
 			return 130
@@ -286,7 +292,7 @@ func (app *App) executeMeasurementPlan(ctx context.Context, command model.Comman
 	var progress progressRenderer
 	var err error
 	if app.StdoutTTY && !jsonMode {
-		progress, err = app.ProgressFactory(app.Out, app.Version, plan.Providers)
+		progress, err = app.ProgressFactory(app.Out, app.Identity.Version, plan.Providers)
 		if err != nil {
 			return app.fail(false, "renderer_error", fmt.Sprintf("start interactive renderer: %v", err), 1)
 		}
@@ -310,7 +316,7 @@ func (app *App) executeMeasurementPlan(ctx context.Context, command model.Comman
 		summary.SchemaVersion = model.SchemaVersion
 	}
 	if summary.ToolVersion == "" {
-		summary.ToolVersion = app.Version
+		summary.ToolVersion = app.Identity.Version
 	}
 	if summary.Command == "" {
 		summary.Command = command
@@ -627,7 +633,7 @@ func (app *App) executeDoctor(ctx context.Context, jsonMode bool) int {
 	}
 	combinedReady := ready && consentAccepted
 	payload := map[string]any{
-		"version":           app.Version,
+		"version":           app.Identity.Version,
 		"ready":             ready,
 		"combinedReady":     combinedReady,
 		"providers":         checks,
@@ -674,7 +680,7 @@ func (app *App) renderDoctor(checks, optionalChecks map[string]string, consentAc
 		}
 		return styles.Warn("false")
 	}
-	fmt.Fprintln(out, styles.Title("pace "+app.Version+" diagnostics"))
+	fmt.Fprintln(out, styles.Title("pace "+app.Identity.Version+" diagnostics"))
 	writeAligned(out, [][]string{
 		{"Campus", readiness(checks["campus"], false)},
 		{"M-Lab", readiness(checks["mlab"], false)},
@@ -769,7 +775,7 @@ func (app *App) promptAndAcceptConsent(jsonMode bool) int {
 	if strings.TrimSpace(scanner.Text()) != "accept" {
 		return app.fail(jsonMode, "consent_declined", "consent was not accepted", 1)
 	}
-	record, err := app.Consent.Accept(app.Version, app.Now())
+	record, err := app.Consent.Accept(app.Identity.Version, app.Now())
 	if err != nil {
 		return app.fail(jsonMode, "consent_error", err.Error(), 1)
 	}
