@@ -142,8 +142,9 @@ pace update [--check]
 
 ## 安装与可选 provider（要点）
 
-- 基础测量依赖 pace 发布的 LibreSpeed/ndt7 helper；缺少 helper 时
-  `doctor` 明确报告，**不下载未知程序**。
+- 基础测量依赖固定版本的 LibreSpeed/ndt7 helper。Homebrew 和
+  Releases 压缩包都不含 helper，在本仓库里 `make tools` 构建；缺少
+  helper 时 `doctor` 明确报告，**不下载未知程序**。
 - Apple `networkQuality` 是 macOS 自带组件，pace 只调用、不捆绑、
   不代用户接受条款。
 - Ookla 仅支持**官方** Speedtest CLI，由用户自行安装
@@ -195,7 +196,7 @@ make build
 ./bin/pace version
 ```
 
-测试、Formula 与 release automation 只使用 fixtures/mock helper，常规
+测试与 release automation 只使用 fixtures/mock helper，常规
 CI 不执行真实带宽测试；真实测速由对应平台操作者单独验收。Makefile
 目标拆分在 `make/*.mk`。流程详见 [TESTING.md](TESTING.md) 与
 [RELEASE.md](RELEASE.md)。

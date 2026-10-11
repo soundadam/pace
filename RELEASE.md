@@ -25,8 +25,8 @@ git tag v0.6.0 && git push origin v0.6.0
 
 - **Never release from a dirty worktree.** The tag must point at a commit
   that passed automated and operator acceptance.
-- **CI never runs a real bandwidth measurement.** `make test-offline` and
-  all packaging tests use local fixtures only.
+- **CI never runs a real bandwidth measurement.** `make test-offline` uses
+  local fixtures only.
 - **Real measurements are operator acceptance**, performed manually from
   [TESTING.md](TESTING.md) before tagging.
 - **Releases are immutable.** The repository has release immutability on:
@@ -120,40 +120,3 @@ A directly downloaded older release updates itself with `pace update`.
 
 Prerelease tags (e.g. `v0.6.0-rc.1`) create a GitHub prerelease and skip the
 tap update; `pace update` never offers them.
-
-## 5. Source Formula
-
-`make release VERSION=0.6.0` runs
-[scripts/build-release.sh](scripts/build-release.sh) to produce a
-deterministic source `dist/pace-0.6.0.tar.gz` and renders the
-source-build Formula from
-[packaging/homebrew/pace.rb.tmpl](packaging/homebrew/pace.rb.tmpl)
-via
-[scripts/render-homebrew-formula.sh](scripts/render-homebrew-formula.sh).
-That Formula builds pace and both helpers from source and carries
-`license all_of: ["MIT", "LGPL-3.0-only", "Apache-2.0"]`; its `test do`
-block is offline. The tap does not ship it.
-`scripts/test-homebrew-template.sh` and
-`scripts/test-release-artifact.sh` keep this path exercised in
-`make test-offline`.
-
-- [ ] Decide whether the source Formula stays: appkit's channels are the
-  release archives and the Cask only, and a Formula-installed pace is
-  detected as a plain executable, so `pace update` would replace the
-  binary inside the Cellar.
-
-## 6. `homebrew/core` consideration
-
-Do not advertise `brew install pace` from core until Homebrew accepts
-the Formula. A future submission should demonstrate:
-
-- a public, stable, immutable release;
-- an actively maintained upstream project;
-- successful builds and tests across Homebrew's supported matrix;
-- checksummed and locked source dependencies;
-- meaningful offline Formula tests;
-- no runtime downloads or self-updates;
-- clear licensing for pace and both installed helper executables.
-
-Until then, the supported installation path is through
-`soundadam/homebrew-tap`.

@@ -3,5 +3,4 @@ GO ?= go
 GOTOOLCHAIN ?= auto
 
 .PHONY: build tools verify-mod test test-race test-campus-provider test-mlab-provider \
-	test-campus-fixture test-run-fixture test-homebrew-template test-release-artifact \
-	test-offline vet check ci release package clean clean-tools
+	test-campus-fixture test-run-fixture test-offline vet check ci package clean clean-tools

@@ -28,8 +28,7 @@ Homebrew template checks, and deterministic release artifact tests. It covers:
 - normalized one-measurement-per-row CSV export;
 - Bubble Tea inline rendering and cursor restoration;
 - JSON and redirected output without ANSI or provider event leakage;
-- atomic storage and `0700`/`0600` modes;
-- deterministic source archive and Formula generation.
+- atomic storage and `0700`/`0600` modes.
 
 Focused tests:
 
@@ -68,7 +67,7 @@ v0.10.1
 
 Helper discovery order:
 
-1. installed `../libexec/pace`;
+1. `../libexec/pace` relative to the executable;
 2. repository-local `.tools/bin`;
 3. explicit developer PATH fallback.
 
@@ -298,19 +297,3 @@ Expected:
 directory: drwx------
 files:     -rw-------
 ```
-
-## 12. Homebrew gate
-
-On supported macOS arm64 versions:
-
-```sh
-brew style Formula/pace.rb
-brew audit --strict --new --formula soundadam/tap/pace
-HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source soundadam/tap/pace
-brew test soundadam/tap/pace
-pace version
-pace doctor --json
-```
-
-Formula tests remain offline and do not invoke the selector, station probes, or
-real bandwidth measurements.

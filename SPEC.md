@@ -348,7 +348,7 @@ multi-station and dual-stack plans.
 
 Resolve helpers in this order:
 
-1. installed `../libexec/pace` relative to the executable;
+1. `../libexec/pace` relative to the executable;
 2. repository-local `.tools/bin`;
 3. documented developer PATH fallback.
 
@@ -363,9 +363,9 @@ Verify exact helper versions and include them in results. Production must not
 silently select an arbitrary newer PATH helper when a pinned libexec helper
 exists.
 
-Homebrew Formula tests are offline and may invoke only version, diagnostics, and
-read-only history commands. They must not probe real stations or run bandwidth
-measurements.
+The release archives and the Cask do not contain `librespeed-cli` or
+`ndt7-client`, and pace never downloads them; `make tools` builds both from this
+repository into `.tools/bin`.
 
 ## 12. Verification gates
 
@@ -384,8 +384,7 @@ Automated tests use mock helpers and local HTTP fixtures. They cover:
 - normalized CSV and JSONL export;
 - inline terminal rendering, cursor restoration, and no ANSI in redirected/JSON
   output;
-- atomic storage and `0700`/`0600` modes;
-- deterministic release artifacts and Homebrew template rendering.
+- atomic storage and `0700`/`0600` modes.
 
 Routine CI must never run a real bandwidth measurement or station probe.
 Operator acceptance validates real NJU Campus, domestic stations, M-Lab

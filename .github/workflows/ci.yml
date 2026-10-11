@@ -25,10 +25,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          # scripts/test-release-artifact.sh creates git worktrees and tags;
-          # it needs real history, not a shallow clone.
-          fetch-depth: 0
 
       - uses: actions/setup-go@v7
         with:
