@@ -6,8 +6,8 @@
 #   pace-<ver>-<os>-<arch>.tar.gz   macOS and Linux
 #   pace-<ver>-windows-<arch>.zip   Windows
 #
-# each holding pace-<ver>-<os>-<arch>/pace[.exe] with README.md, LICENSE and
-# THIRD_PARTY_NOTICES.md. The version is injected as main.version; the release
+# each holding pace-<ver>-<os>-<arch>/pace[.exe] with README.md, LICENSE,
+# THIRD_PARTY_NOTICES.md and THIRD_PARTY_LICENSES. The version is injected as main.version; the release
 # workflow passes the tag without its leading "v". Linux runs the same script
 # as CI, and it needs GNU tar and zip.
 set -euo pipefail
@@ -22,6 +22,32 @@ extras=(README.md LICENSE THIRD_PARTY_NOTICES.md)
 # Archive timestamps come from the commit, so the same commit and version
 # package to the same bytes.
 mtime=$(git log -1 --format=%cI)
+
+# THIRD_PARTY_LICENSES for one platform: the license texts of the Go runtime
+# and standard library, then of every module that platform's build links.
+third_party_licenses() {
+    local goos=$1 goarch=$2 module dir f files
+    printf 'pace links the following third-party code. Their licenses follow.\n'
+    printf '\n==== Go standard library and runtime (%s)\n\n' "$(go env GOVERSION)"
+    cat "$(go env GOROOT)/LICENSE"
+    GOOS=$goos GOARCH=$goarch go list -deps \
+        -f '{{with .Module}}{{if not .Main}}{{.Path}}@{{.Version}}{{"\t"}}{{.Dir}}{{end}}{{end}}' ./cmd/pace |
+        LC_ALL=C sort -u |
+        while IFS=$'\t' read -r module dir; do
+            files=()
+            for f in "$dir"/LICENSE* "$dir"/LICENCE* "$dir"/COPYING* "$dir"/NOTICE* "$dir"/PATENTS*; do
+                [ -f "$f" ] && files+=("$f")
+            done
+            if [ "${#files[@]}" -eq 0 ]; then
+                echo "no license file in $module ($dir)" >&2
+                return 1
+            fi
+            for f in "${files[@]}"; do
+                printf '\n==== %s (%s)\n\n' "$module" "$(basename "$f")"
+                cat "$f"
+            done
+        done
+}
 
 rm -rf dist
 mkdir -p dist
@@ -40,6 +66,7 @@ for platform in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 
         -ldflags "-s -w -buildid= -X main.version=$version" \
         -o "dist/$name/$exe" ./cmd/pace
     cp "${extras[@]}" "dist/$name/"
+    third_party_licenses "$goos" "$goarch" >"dist/$name/THIRD_PARTY_LICENSES"
     touch -d "$mtime" "dist/$name" "dist/$name"/*
 
     if [ "$goos" = windows ]; then

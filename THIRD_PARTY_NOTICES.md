@@ -66,7 +66,8 @@ them only after Enter and never runs uninstall commands. See
 - Integration: linked Go library for fixed-block inline terminal rendering
 
 Bubble Tea and its transitive Go dependencies are recorded in `go.mod` and
-`go.sum`. The renderer is disabled for redirected output and global JSON mode.
+`go.sum`. Each release archive carries `THIRD_PARTY_LICENSES` with the license
+texts of the Go runtime and every module linked into that platform's binary. The renderer is disabled for redirected output and global JSON mode.
 
 ## Release verification
 
