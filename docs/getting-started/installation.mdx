@@ -4,30 +4,53 @@ description: "macOS、Linux、Windows 安装方式，helper 机制与可选的 O
 icon: "download"
 ---
 
-## macOS（Homebrew）
+## Homebrew（macOS、Linux）
 
 ```sh
 brew install --cask soundadam/tap/pace
 pace doctor --json
 ```
 
-Homebrew cask 在 macOS 上安装。
+## 直接下载
 
-## Linux / Windows
+[Releases](https://github.com/soundadam/pace/releases) 里每个平台一份压缩包：
+macOS、Linux 是 `pace-<版本>-<macos|linux>-<x86_64|aarch64>.tar.gz`，Windows 是
+`pace-<版本>-windows-<x86_64|aarch64>.zip`。解压出的目录里是 `pace`
+（Windows 是 `pace.exe`），把它放进 PATH。
 
-使用对应平台的 [release 二进制](https://github.com/soundadam/pace/releases)，
-或从仓库源码构建核心 CLI。构建不需要 Apple SDK：
+- macOS 版没有经过 Apple 公证：浏览器下载的第一次运行会被 Gatekeeper 拦下，
+  到「系统设置 → 隐私与安全性」里点「仍要打开」，或者
+  `xattr -dr com.apple.quarantine <解压出来的 pace>`。Homebrew 装的不受影响。
+- Windows 版没有签名，SmartScreen 第一次运行时会警告。
+
+## 从源码构建
+
+构建不需要 Apple SDK：
 
 ```sh
 GOOS=linux   GOARCH=amd64 go build -o pace ./cmd/pace
 GOOS=windows GOARCH=amd64 go build -o pace.exe ./cmd/pace
 ```
 
+源码构建没有注入版本号，是开发构建：`pace version` 显示 `dev`，不检查也不安装更新。
+
 <Warning>
 基础测量（NJU Campus、M-Lab）需要 pace 发布的 LibreSpeed/ndt7
 helper。缺少 helper 时 `doctor` 会明确报告缺失，而不是下载未知程序。
 自行构建时请同时准备 helper（见下节）。
 </Warning>
+
+## 更新
+
+```sh
+pace update           # 更新到最新版
+pace update --check   # 只看有没有新版
+```
+
+Homebrew 装的交给 `brew upgrade`，直接下载的原地替换可执行文件，新版在下次运行时生效。
+自动检查与提示见 [README](https://github.com/soundadam/pace#安装与更新)，
+怎么判断安装方式、会发哪些网络请求见
+[appkit 的约定](https://github.com/soundadam/appkit#更新)。
 
 ## helper 机制
 

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	appkit "github.com/soundadam/appkit/go"
+	"github.com/soundadam/appkit/go/tuiv2"
 
 	"github.com/soundadam/pace/internal/model"
 	"github.com/soundadam/pace/internal/preferences"
@@ -31,17 +33,32 @@ type selectorModel struct {
 	errorText string
 	language  preferences.Language
 	theme     theme
+	// updater offers a newer release; updating holds the measurement back
+	// until the download is done, so it does not share the link with it.
+	updater  tuiv2.Updater
+	updating bool
 }
 
-func SelectPlan(ctx context.Context, input io.Reader, output io.Writer, version string) (target.Plan, error) {
-	return selectPlan(ctx, input, output, version, preferences.Config{})
+// updaterMsg carries the updater's own messages, so the selector can tell when
+// an update it started has finished.
+type updaterMsg struct{ msg tea.Msg }
+
+func fromUpdater(cmd tea.Cmd) tea.Cmd {
+	if cmd == nil {
+		return nil
+	}
+	return func() tea.Msg { return updaterMsg{cmd()} }
 }
 
-func SelectPlanConfigured(ctx context.Context, input io.Reader, output io.Writer, version string, config preferences.Config) (target.Plan, error) {
-	return selectPlan(ctx, input, output, version, config)
+func SelectPlan(ctx context.Context, input io.Reader, output io.Writer, app appkit.App) (target.Plan, error) {
+	return selectPlan(ctx, input, output, app, preferences.Config{})
 }
 
-func selectPlan(ctx context.Context, input io.Reader, output io.Writer, version string, config preferences.Config) (target.Plan, error) {
+func SelectPlanConfigured(ctx context.Context, input io.Reader, output io.Writer, app appkit.App, config preferences.Config) (target.Plan, error) {
+	return selectPlan(ctx, input, output, app, config)
+}
+
+func selectPlan(ctx context.Context, input io.Reader, output io.Writer, app appkit.App, config preferences.Config) (target.Plan, error) {
 	probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	var probes []target.ProbeResult
 	if config.Validate() == nil {
@@ -50,7 +67,7 @@ func selectPlan(ctx context.Context, input io.Reader, output io.Writer, version 
 		probes = target.ProbeAll(probeCtx, 1500*time.Millisecond)
 	}
 	cancel()
-	model := newSelectorModelConfigured(version, probes, config)
+	model := newSelectorModelConfigured(app, probes, config)
 	program := tea.NewProgram(
 		model,
 		tea.WithContext(ctx),
@@ -74,11 +91,11 @@ func selectPlan(ctx context.Context, input io.Reader, output io.Writer, version 
 	return selector.plan, nil
 }
 
-func newSelectorModel(version string, probeResults []target.ProbeResult) *selectorModel {
-	return newSelectorModelConfigured(version, probeResults, preferences.Config{})
+func newSelectorModel(app appkit.App, probeResults []target.ProbeResult) *selectorModel {
+	return newSelectorModelConfigured(app, probeResults, preferences.Config{})
 }
 
-func newSelectorModelConfigured(version string, probeResults []target.ProbeResult, config preferences.Config) *selectorModel {
+func newSelectorModelConfigured(app appkit.App, probeResults []target.ProbeResult, config preferences.Config) *selectorModel {
 	probes := make(map[string]target.ProbeResult, len(probeResults))
 	for _, result := range probeResults {
 		probes[probeKey(result.StationID, result.Family)] = result
@@ -100,20 +117,21 @@ func newSelectorModelConfigured(version string, probeResults []target.ProbeResul
 		stations = filtered
 	}
 	model := &selectorModel{
-		version:  version,
+		version:  app.Version,
 		stations: stations,
 		probes:   probes,
 		family:   target.FamilyIPv4,
 		selected: map[string]bool{},
 		language: language,
 		theme:    newTheme(),
+		updater:  tuiv2.New(app),
 	}
 	model.applyRecommendation()
 	return model
 }
 
 func (selector *selectorModel) Init() tea.Cmd {
-	return tea.RequestBackgroundColor
+	return tea.Batch(tea.RequestBackgroundColor, fromUpdater(selector.updater.Init()))
 }
 
 func (selector *selectorModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
@@ -121,12 +139,26 @@ func (selector *selectorModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.BackgroundColorMsg:
 		selector.theme.applyBackground(message)
 		return selector, nil
+	case updaterMsg:
+		var next tea.Cmd
+		selector.updater, next = selector.updater.Update(message.msg)
+		if next == nil {
+			selector.updating = false
+		}
+		return selector, fromUpdater(next)
 	}
 	key, ok := message.(tea.KeyPressMsg)
 	if !ok {
 		return selector, nil
 	}
 	selector.errorText = ""
+	offered := selector.updater.Available()
+	var started tea.Cmd
+	selector.updater, started = selector.updater.Update(key)
+	if offered && started != nil {
+		selector.updating = true
+		return selector, fromUpdater(started)
+	}
 	switch key.String() {
 	case "up", "k":
 		if selector.cursor > 0 {
@@ -152,6 +184,10 @@ func (selector *selectorModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case "d":
 		selector.setFamily(target.FamilyDual)
 	case "enter":
+		if selector.updating {
+			selector.errorText = selector.text("更新下载完再开始测速", "wait for the update to finish before measuring")
+			return selector, nil
+		}
 		ids := selector.selectedIDs()
 		if len(ids) == 0 {
 			selector.errorText = selector.text("请至少选择一个测速站", "select at least one measurement target")
@@ -197,6 +233,9 @@ func (selector *selectorModel) View() tea.View {
 	detail := selector.cursorDetail()
 	help := selector.theme.help("space", "enter", "a", "4 6 d") + "\n" + selector.theme.help("esc")
 	blocks := []string{header, body, detail, help}
+	if line := selector.updater.View(); line != "" {
+		blocks = append(blocks, selector.theme.Faint().Render(line))
+	}
 	if selector.errorText != "" {
 		blocks = append(blocks, selector.theme.Bad().Render(selector.errorText))
 	}

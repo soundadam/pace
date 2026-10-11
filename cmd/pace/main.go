@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/soundadam/pace/internal/buildinfo"
+	appkit "github.com/soundadam/appkit/go"
+	appcli "github.com/soundadam/appkit/go/cli"
+
 	"github.com/soundadam/pace/internal/cli"
 	"github.com/soundadam/pace/internal/consent"
 	"github.com/soundadam/pace/internal/helper"
@@ -22,7 +24,13 @@ import (
 	"github.com/soundadam/pace/internal/target"
 )
 
+// version is the release version; release builds set it with
+// -ldflags "-X main.version=<ver>" from the tag.
+var version = "dev"
+
 func main() {
+	identity := appkit.App{Name: "pace", Version: version, Repo: "soundadam/pace"}
+
 	historyDir, err := storage.DefaultHistoryDir()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "pace: determine history directory: %v\n", err)
@@ -67,7 +75,7 @@ func main() {
 	providers[model.ProviderApple] = appleRunner
 	providers[model.ProviderOokla] = ooklaRunner
 	measurementRunner := provider.SummaryRunner{
-		ToolVersion: buildinfo.Version,
+		ToolVersion: version,
 		Campus:      campus.New(helperResolver),
 		MLab:        mlabRunner,
 		Apple:       appleRunner,
@@ -82,16 +90,18 @@ func main() {
 		Err:         os.Stderr,
 		StdinTTY:    isTerminal(os.Stdin),
 		StdoutTTY:   isTerminal(os.Stdout),
-		Version:     buildinfo.Version,
+		Identity:    identity,
 		Runner:      measurementRunner,
 		History:     storage.New(historyDir),
 		Consent:     consent.New(consentPath),
 		Preferences: preferences.New(preferencesPath),
 	}
 
+	notice := appcli.StartNotice(identity)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	exitCode := app.Execute(ctx, os.Args[1:])
 	stop()
+	notice.Print(os.Stderr)
 	os.Exit(exitCode)
 }
 

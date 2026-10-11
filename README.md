@@ -51,8 +51,41 @@ pace
 
 首次在交互终端运行会选择语言与日常测速站（macOS 默认预选
 `nju-campus`、`mlab`、`apple`；Linux/Windows 预选 `nju-campus`、
-`mlab`），之后可用 `pace setup` 修改。Homebrew cask 在 macOS
-上安装；Linux/Windows 使用 release 二进制或源码构建，详见
+`mlab`），之后可用 `pace setup` 修改。
+
+## 安装与更新
+
+macOS 与 Linux 用 Homebrew：
+
+```sh
+brew install --cask soundadam/tap/pace
+```
+
+Windows，以及不用 Homebrew 的 macOS / Linux，从
+[Releases](https://github.com/soundadam/pace/releases) 下载对应平台的
+`pace-<版本>-<平台>-<架构>` 压缩包，把里面的 `pace`（Windows 是 `pace.exe`）
+放进 PATH。
+
+- macOS 版没有经过 Apple 公证。Homebrew 装的直接能用；浏览器下载的第一次运行
+  会被 Gatekeeper 拦下，到「系统设置 → 隐私与安全性」里点「仍要打开」，或者
+  自己去掉隔离属性：
+
+  ```sh
+  xattr -dr com.apple.quarantine <解压出来的 pace>
+  ```
+
+- Windows 版没有签名，SmartScreen 第一次运行时会警告。
+
+```sh
+pace update           # 更新到最新版
+pace update --check   # 只看有没有新版
+pace --version
+```
+
+Homebrew 装的升级交给 brew，从 Releases 下载的原地替换自己。命令跑完后，
+知道有新版就往 stderr 写一行提示（至多一天查一次）；交互选择器里有新版时
+按 `u` 更新，下载完才开始测速。怎么判断安装方式、会发哪些网络请求见
+[appkit](https://github.com/soundadam/appkit#更新)。平台与 helper 的细节见
 [安装文档](docs/getting-started/installation.mdx)。
 
 ## 测速视角
@@ -86,6 +119,7 @@ pace history [--limit N] | last [--json] | show RUN_ID [--json]
 pace export --format jsonl|csv --output PATH
 pace consent status|accept|revoke
 pace setup | doctor [--json] | version
+pace update [--check]
 ```
 
 退出码稳定：`0` 全部成功，`1` 配置/环境错误，`2` 目标失败或部分成功，
@@ -181,7 +215,7 @@ CI 不执行真实带宽测试；真实测速由对应平台操作者单独验�
 
 ## 命名约定
 
-产品名、仓库名、Homebrew Formula、可执行文件、TUI 标题和 CLI 输出均
+产品名、仓库名、Homebrew Cask、可执行文件、TUI 标题和 CLI 输出均
 保持小写 `pace`。Go 模块路径保持 `github.com/soundadam/pace`。
 
 ## Contributing

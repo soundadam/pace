@@ -190,7 +190,11 @@ d            dual stack
 a            restore recommendation
 Enter        execute
 q / Esc      cancel
+u            update, when a newer release is offered
 ```
+
+While an update started with `u` is downloading, Enter does not start the
+measurement, so the download never shares the link with it.
 
 The selector chrome follows Teaway's Charm TUI: indigo title `pace`,
 fuchsia cursor (`>`), green check (`✓`) for selected stations, faint bullet
@@ -298,7 +302,11 @@ pace export --format jsonl|csv --output PATH
 pace consent status|accept|revoke
 pace doctor [--json]
 pace version
+pace update [--check]
 ```
+
+`pace --version`, `pace update` and the post-command notice of a newer release
+follow the [appkit](https://github.com/soundadam/appkit#命令行) conventions.
 
 ## 9. Consent and privacy
 
@@ -312,7 +320,9 @@ without current consent fails before contacting M-Lab. LibreSpeed telemetry and
 sharing are always disabled.
 
 pace has no own analytics, remote result service, geolocation enrichment, or
-ASN lookup.
+ASN lookup. Its only request outside measurement is the release check
+described by [appkit](https://github.com/soundadam/appkit#更新), which carries
+no measurement data.
 
 ## 10. Storage and export
 
