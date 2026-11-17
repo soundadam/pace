@@ -32,8 +32,8 @@ git tag v0.6.0 && git push origin v0.6.0
 - **Releases are immutable.** The repository has release immutability on:
   once published, neither the assets nor the tag can change. Ship a new
   version instead.
-- **Helper licensing stays explicit.** The archives contain only the MIT
-  pace binary plus `LICENSE`, `README.md`, `THIRD_PARTY_NOTICES.md`, and
+- **Helper licensing stays explicit.** The archives contain only the Apache-2.0
+  pace binary plus `LICENSE`, `NOTICE`, `README.md`, `THIRD_PARTY_NOTICES.md`, and
   `THIRD_PARTY_LICENSES` (the license texts of the Go runtime and every
   module linked into that platform's binary). The LibreSpeed helper (LGPL-3.0-only) and ndt7
   helper (Apache-2.0) are never bundled or auto-downloaded; the cask
