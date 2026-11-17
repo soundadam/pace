@@ -8,7 +8,7 @@ presentation:
   command:
     - brew trust --tap soundadam/tap
     - brew install --cask soundadam/tap/pace
-  note: 不打分。没有遥测。失败就记失败。
+  note: 不给综合分，没有遥测。
 registry:
   github: soundadam/pace
   homebrew: soundadam/tap/pace
@@ -28,7 +28,7 @@ modules:
 
   - type: snapshot
     title: 为什么不用一个测速网站
-    body: 常见的测速网站挑离你最近的运营商服务器，测出来的是最好看的那一段路，再给你一个数字。教育网用户的问题往往在别处：校内服务连不上、VPN 掉了、CERNET 出口拥堵，或者代理出口慢。{title} 按顺序测每一个选中的目标，结果并排列出，从不互相替换、排名或折算成一个分数。
+    body: 常见的测速网站选离你最近的运营商服务器，只测这一段路，给出一个数字。教育网用户的问题往往在别处：校内服务连不上、VPN 掉了、CERNET 出口拥堵，或者代理出口慢。{title} 按顺序测每一个选中的目标，结果并排列出，从不互相替换、排名或折算成一个分数。
     note: 南大校内测速用 `speed.nju.edu.cn`。某个站点连不上时，{title} 照实报告，不拿别的站点顶替。
     metrics:
       - value: "6"
@@ -56,7 +56,7 @@ modules:
     lede: 测量失败时记零速率，并标明卡在哪一步（`dns`、`connect`、`download`、`timeout`…）；按 Ctrl-C 取消后，还没开始的目标记为 `skipped`。每次结果都存成本地 JSON，`pace history` 回看，`pace export` 导出 JSONL 或 CSV，`--json` 方便脚本和定时任务直接读。
 
   - type: section
-    title: 隐私由你决定
+    title: 测 M-Lab 之前先同意
     index: 3/3
     lede: M-Lab 会公开并长期保留测试结果和你的公网 IP，所以 {title} 要你先运行 `pace consent accept` 才会测 M-Lab，没有同意记录就直接失败。{title} 自己不上传任何数据，不做地理定位，也不替你接受 Apple、Ookla 的条款；Ookla 只调用你自己装的官方 Speedtest CLI。
 ---
