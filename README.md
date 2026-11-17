@@ -5,7 +5,7 @@
 [![CI](https://github.com/soundadam/pace/actions/workflows/ci.yml/badge.svg)](https://github.com/soundadam/pace/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/soundadam/pace.svg)](https://pkg.go.dev/github.com/soundadam/pace)
 [![Release](https://img.shields.io/github/v/release/soundadam/pace)](https://github.com/soundadam/pace/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 pace 不把不同线路压成一个"网络分数"，而是按顺序回答几个清楚的
 问题：南大校园网或校园 VPN 是否通、公网出口表现如何、负载下网络是否
@@ -206,7 +206,7 @@ CI 不执行真实带宽测试；真实测速由对应平台操作者单独验�
 
 ## 许可与第三方
 
-- pace 本体：**MIT**（见 [LICENSE](LICENSE)）。
+- pace 本体：**Apache-2.0**（见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)）；0.5.0 及更早的版本仍按发布时的 MIT。
 - `librespeed-cli` helper：**LGPL-3.0-only**，维护源码在
   `components/librespeed-cli`，作为独立进程执行、不静态链接。
 - `ndt7-client` helper：**Apache-2.0**，按固定版本与 SHA-256 构建。

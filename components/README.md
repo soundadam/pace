@@ -1,7 +1,7 @@
 # Components and license boundaries
 
 This directory contains separately built helper source. It is not covered by
-the repository-root MIT license unless a component explicitly says so.
+the repository-root Apache-2.0 license unless a component explicitly says so.
 
 | Directory | Purpose | License |
 | --- | --- | --- |

@@ -20,7 +20,7 @@ version and SHA-256. Go library dependencies are locked by `go.mod` and
 The complete maintained source is in `components/librespeed-cli`. It adds
 structured progress and explicit loopback SOCKS5 support while preserving the
 upstream module and LGPL license. The helper remains a separate executable and
-is not statically linked into the MIT executable. The repository contains the
+is not statically linked into the Apache-2.0 pace executable. The repository contains the
 complete corresponding source and its license.
 
 ## M-Lab ndt7-client-go

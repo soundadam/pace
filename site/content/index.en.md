@@ -8,7 +8,7 @@ presentation:
   command:
     - brew trust --tap soundadam/tap
     - brew install --cask soundadam/tap/pace
-  note: No score. No telemetry. A failure is recorded as a failure.
+  note: No overall score, no telemetry.
 registry:
   github: soundadam/pace
   homebrew: soundadam/tap/pace
@@ -28,7 +28,7 @@ modules:
 
   - type: snapshot
     title: Why not a speed-test website
-    body: A typical speed-test site picks the ISP server closest to you, measures the best-looking stretch of the path, and hands you one number. On an education network the trouble is usually elsewhere. A campus service is unreachable, the VPN dropped, the CERNET exit is congested, or the proxy exit is slow. {title} runs every selected target in order and lists the results side by side. It never substitutes, ranks or folds them into one score.
+    body: A typical speed-test site picks the ISP server closest to you, measures only that stretch of the path, and gives one number. On an education network the trouble is usually elsewhere. A campus service is unreachable, the VPN dropped, the CERNET exit is congested, or the proxy exit is slow. {title} runs every selected target in order and lists the results side by side. It never substitutes, ranks or folds them into one score.
     note: Nanjing University's on-campus test uses `speed.nju.edu.cn`. When a site cannot be reached, {title} reports that as it is and does not swap in another site.
     metrics:
       - value: "6"
@@ -56,7 +56,7 @@ modules:
     lede: A failed measurement records zero throughput and the stage where it stopped (`dns`, `connect`, `download`, `timeout`…). After Ctrl-C, targets that had not started are marked `skipped`. Every run is saved locally as JSON. `pace history` reads it back, `pace export` writes JSONL or CSV, and `--json` gives scripts and scheduled jobs something to parse.
 
   - type: section
-    title: Privacy is your decision
+    title: M-Lab only after consent
     index: 3/3
     lede: M-Lab publishes test results and your public IP and keeps them indefinitely, so {title} measures M-Lab only after you run `pace consent accept`; without that record the run fails before contacting M-Lab. {title} itself uploads nothing and does no geolocation, and it does not accept Apple's or Ookla's terms for you. Ookla runs only through the official Speedtest CLI you install yourself.
 ---

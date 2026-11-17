@@ -54,7 +54,7 @@ cask "pace" do
   end
 
   caveats <<~EOS
-    pace is MIT licensed.
+    pace is Apache-2.0 licensed.
 
     The optional measurement helpers are separate programs with their own
     licenses and are NOT bundled with this package:
