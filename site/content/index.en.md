@@ -15,7 +15,7 @@ registry:
   docs: https://github.com/soundadam/pace#readme
 release:
   version: "0.5.0"
-  license: Apache-2.0
+  license: MIT
 modules:
   - type: promo
     description: When the network is slow, the first question is which part is slow. Is the campus network or campus VPN up, how does the education network look, how fast is the proxy or public exit? {title} measures each of these separately and reports each on its own.
