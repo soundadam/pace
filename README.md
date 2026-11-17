@@ -206,7 +206,7 @@ CI 不执行真实带宽测试；真实测速由对应平台操作者单独验�
 
 ## 许可与第三方
 
-- pace 本体：**Apache-2.0**（见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)）；0.5.0 及更早的版本仍按发布时的 MIT。
+- pace 本体：**Apache-2.0**（见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)）。
 - `librespeed-cli` helper：**LGPL-3.0-only**，维护源码在
   `components/librespeed-cli`，作为独立进程执行、不静态链接。
 - `ndt7-client` helper：**Apache-2.0**，按固定版本与 SHA-256 构建。

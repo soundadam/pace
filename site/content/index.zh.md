@@ -15,7 +15,7 @@ registry:
   docs: https://github.com/soundadam/pace#readme
 release:
   version: "0.5.0"
-  license: MIT
+  license: Apache-2.0
 modules:
   - type: promo
     description: 网慢的时候，先要知道慢在哪一段：校园网和校园 VPN 通不通，教育网方向怎么样，代理或公网出口跑得多快。{title} 把这几段分开测，各出各的结果。
